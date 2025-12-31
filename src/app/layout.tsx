@@ -7,9 +7,28 @@ import { ReactNode } from "react";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
+const clerkAppearance = {
+  variables: {
+    fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+    fontFamilyButtons: "'Inter', system-ui, -apple-system, sans-serif",
+  },
+  elements: {
+    formButtonPrimary: {
+      backgroundColor: "#5a8f4e",
+      "&:hover": {
+        backgroundColor: "#3d6b35",
+      },
+    },
+    card: {
+      boxShadow: "0 2px 8px rgba(44, 36, 22, 0.1)",
+      border: "1px solid #e0d6c8",
+    },
+  },
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider appearance={clerkAppearance}>
       <html lang="en">
         <head>
           <title>GreenScore - SAT Prep That Grows With You</title>

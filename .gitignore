@@ -49,3 +49,5 @@ coverage/
 
 # Convex
 convex/_generated/
+# clerk configuration (can include secrets)
+/.clerk/

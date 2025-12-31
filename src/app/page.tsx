@@ -11,40 +11,25 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect authenticated users to dashboard
     if (isLoaded && user) {
-      router.push("/dashboard");
+      router.replace("/dashboard");
     }
   }, [isLoaded, user, router]);
 
-  // Loading state
-  if (!isLoaded) {
+  // Loading state or redirecting
+  if (!isLoaded || user) {
     return (
       <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
         <div className="text-center">
           <Leaf className="w-12 h-12 text-[var(--grass-dark)] mx-auto mb-4 animate-pulse" />
-          <p className="font-body text-[var(--ink-faded)]">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If user is logged in, show loading while redirecting
-  if (user) {
-    return (
-      <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
-        <div className="text-center">
-          <Leaf className="w-12 h-12 text-[var(--grass-dark)] mx-auto mb-4 animate-pulse" />
-          <p className="font-body text-[var(--ink-faded)]">Redirecting to dashboard...</p>
+          <p className="font-body text-[var(--ink-faded)]">
+            {user ? "Redirecting to dashboard..." : "Loading..."}
+          </p>
         </div>
       </div>
     );
   }
 
   // Show landing page for non-authenticated users
-  const handleStartPractice = () => {
-    // This will trigger Clerk's sign-in modal via the LandingPage button
-  };
-
-  return <LandingPage onStartPractice={handleStartPractice} />;
+  return <LandingPage />;
 }

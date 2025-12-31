@@ -161,8 +161,8 @@ function PassageView({
   const paragraphs = passage.content.split("\n\n");
 
   return (
-    <div className="p-6 sm:p-8 notebook-paper min-h-full">
-      <div className="notebook-margin">
+    <div className="p-6 sm:p-8 bg-[var(--paper-cream)] min-h-full">
+      <div>
         {passage.title && (
           <h3 className="font-display text-xl font-bold text-[var(--ink-black)] mb-1">
             {passage.title}

@@ -1,11 +1,9 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   Leaf,
   LayoutDashboard,
@@ -25,9 +23,40 @@ const navItems = [
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (isLoaded && !user) {
+      router.push("/sign-in");
+    }
+  }, [isLoaded, user, router]);
+
+  // Show loading state while checking auth
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
+        <div className="text-center">
+          <Leaf className="w-12 h-12 text-[var(--grass-dark)] mx-auto mb-4 animate-pulse" />
+          <p className="font-body text-[var(--ink-faded)]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
+        <div className="text-center">
+          <Leaf className="w-12 h-12 text-[var(--grass-dark)] mx-auto mb-4 animate-pulse" />
+          <p className="font-body text-[var(--ink-faded)]">Redirecting to sign in...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--paper-cream)] flex">
