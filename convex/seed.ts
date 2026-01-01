@@ -145,111 +145,121 @@ const RW_TEMPLATES = [
   },
 ];
 
-// Math question templates
+// Math question templates (using LaTeX notation with $...$ delimiters)
 const MATH_TEMPLATES = [
   {
-    prompt: "If 3x + 7 = 22, what is the value of 6x + 14?",
+    prompt: "If $3x + 7 = 22$, what is the value of $6x + 14$?",
     options: [
-      { key: "A", content: "30" },
-      { key: "B", content: "37" },
-      { key: "C", content: "44" },
-      { key: "D", content: "51" },
+      { key: "A", content: "$30$" },
+      { key: "B", content: "$37$" },
+      { key: "C", content: "$44$" },
+      { key: "D", content: "$51$" },
     ],
     correctAnswer: "C",
     domain: "algebra",
     skill: "linear_equations",
-    explanation: "First solve for x: 3x + 7 = 22, so 3x = 15, and x = 5. Then 6x + 14 = 6(5) + 14 = 30 + 14 = 44. Alternatively, notice that 6x + 14 = 2(3x + 7) = 2(22) = 44.",
+    explanation:
+      "First solve for $x$: $3x + 7 = 22$, so $3x = 15$, and $x = 5$. Then $6x + 14 = 6(5) + 14 = 30 + 14 = 44$. Alternatively, notice that $6x + 14 = 2(3x + 7) = 2(22) = 44$.",
   },
   {
-    prompt: "Which of the following is equivalent to (x + 3)² - 9?",
+    prompt: "Which of the following is equivalent to $(x + 3)^2 - 9$?",
     options: [
-      { key: "A", content: "x²" },
-      { key: "B", content: "x² + 6x" },
-      { key: "C", content: "x² + 6x + 9" },
-      { key: "D", content: "x² - 6x" },
+      { key: "A", content: "$x^2$" },
+      { key: "B", content: "$x^2 + 6x$" },
+      { key: "C", content: "$x^2 + 6x + 9$" },
+      { key: "D", content: "$x^2 - 6x$" },
     ],
     correctAnswer: "B",
     domain: "advanced_math",
     skill: "quadratic_equations",
-    explanation: "Expand (x + 3)² = x² + 6x + 9. Then subtract 9: x² + 6x + 9 - 9 = x² + 6x.",
+    explanation:
+      "Expand $(x + 3)^2 = x^2 + 6x + 9$. Then subtract 9: $x^2 + 6x + 9 - 9 = x^2 + 6x$.",
   },
   {
-    prompt: "A line passes through the points (2, 5) and (6, 13). What is the slope of this line?",
+    prompt:
+      "A line passes through the points $(2, 5)$ and $(6, 13)$. What is the slope of this line?",
     options: [
-      { key: "A", content: "1/2" },
-      { key: "B", content: "2" },
-      { key: "C", content: "4" },
-      { key: "D", content: "8" },
+      { key: "A", content: "$\\frac{1}{2}$" },
+      { key: "B", content: "$2$" },
+      { key: "C", content: "$4$" },
+      { key: "D", content: "$8$" },
     ],
     correctAnswer: "B",
     domain: "algebra",
     skill: "linear_equations",
-    explanation: "Slope = (y₂ - y₁)/(x₂ - x₁) = (13 - 5)/(6 - 2) = 8/4 = 2.",
+    explanation:
+      "Slope $= \\frac{y_2 - y_1}{x_2 - x_1} = \\frac{13 - 5}{6 - 2} = \\frac{8}{4} = 2$.",
   },
   {
-    prompt: "If f(x) = 2x² - 3x + 1, what is f(-2)?",
+    prompt: "If $f(x) = 2x^2 - 3x + 1$, what is $f(-2)$?",
     options: [
-      { key: "A", content: "3" },
-      { key: "B", content: "11" },
-      { key: "C", content: "15" },
-      { key: "D", content: "19" },
+      { key: "A", content: "$3$" },
+      { key: "B", content: "$11$" },
+      { key: "C", content: "$15$" },
+      { key: "D", content: "$19$" },
     ],
     correctAnswer: "C",
     domain: "advanced_math",
     skill: "quadratic_equations",
-    explanation: "f(-2) = 2(-2)² - 3(-2) + 1 = 2(4) + 6 + 1 = 8 + 6 + 1 = 15.",
+    explanation:
+      "$f(-2) = 2(-2)^2 - 3(-2) + 1 = 2(4) + 6 + 1 = 8 + 6 + 1 = 15$.",
   },
   {
-    prompt: "What is the solution to the system of equations: y = 2x + 1 and y = -x + 7?",
+    prompt:
+      "What is the solution to the system of equations: $y = 2x + 1$ and $y = -x + 7$?",
     options: [
-      { key: "A", content: "x = 2, y = 5" },
-      { key: "B", content: "x = 3, y = 4" },
-      { key: "C", content: "x = 1, y = 3" },
-      { key: "D", content: "x = 4, y = 3" },
+      { key: "A", content: "$x = 2, y = 5$" },
+      { key: "B", content: "$x = 3, y = 4$" },
+      { key: "C", content: "$x = 1, y = 3$" },
+      { key: "D", content: "$x = 4, y = 3$" },
     ],
     correctAnswer: "A",
     domain: "algebra",
     skill: "systems_of_equations",
-    explanation: "Set the equations equal: 2x + 1 = -x + 7. Solve: 3x = 6, so x = 2. Then y = 2(2) + 1 = 5.",
+    explanation:
+      "Set the equations equal: $2x + 1 = -x + 7$. Solve: $3x = 6$, so $x = 2$. Then $y = 2(2) + 1 = 5$.",
   },
   {
-    prompt: "If the ratio of a to b is 3:5, and b = 20, what is a?",
+    prompt: "If the ratio of $a$ to $b$ is $3:5$, and $b = 20$, what is $a$?",
     options: [
-      { key: "A", content: "8" },
-      { key: "B", content: "12" },
-      { key: "C", content: "15" },
-      { key: "D", content: "33" },
+      { key: "A", content: "$8$" },
+      { key: "B", content: "$12$" },
+      { key: "C", content: "$15$" },
+      { key: "D", content: "$33$" },
     ],
     correctAnswer: "B",
     domain: "problem_solving",
     skill: "ratios_and_proportions",
-    explanation: "If a:b = 3:5, then a/b = 3/5. With b = 20: a/20 = 3/5, so a = 20 × 3/5 = 12.",
+    explanation:
+      "If $a:b = 3:5$, then $\\frac{a}{b} = \\frac{3}{5}$. With $b = 20$: $\\frac{a}{20} = \\frac{3}{5}$, so $a = 20 \\times \\frac{3}{5} = 12$.",
   },
   {
-    prompt: "In a right triangle, one leg is 6 and the hypotenuse is 10. What is the length of the other leg?",
+    prompt:
+      "In a right triangle, one leg is $6$ and the hypotenuse is $10$. What is the length of the other leg?",
     options: [
-      { key: "A", content: "4" },
-      { key: "B", content: "6" },
-      { key: "C", content: "8" },
-      { key: "D", content: "12" },
+      { key: "A", content: "$4$" },
+      { key: "B", content: "$6$" },
+      { key: "C", content: "$8$" },
+      { key: "D", content: "$12$" },
     ],
     correctAnswer: "C",
     domain: "geometry_and_trigonometry",
     skill: "right_triangles",
-    explanation: "By the Pythagorean theorem: a² + b² = c². So 6² + b² = 10², meaning 36 + b² = 100, b² = 64, b = 8.",
+    explanation:
+      "By the Pythagorean theorem: $a^2 + b^2 = c^2$. So $6^2 + b^2 = 10^2$, meaning $36 + b^2 = 100$, $b^2 = 64$, $b = 8$.",
   },
   {
-    prompt: "What is the value of x if 2^x = 32?",
+    prompt: "What is the value of $x$ if $2^x = 32$?",
     options: [
-      { key: "A", content: "4" },
-      { key: "B", content: "5" },
-      { key: "C", content: "6" },
-      { key: "D", content: "16" },
+      { key: "A", content: "$4$" },
+      { key: "B", content: "$5$" },
+      { key: "C", content: "$6$" },
+      { key: "D", content: "$16$" },
     ],
     correctAnswer: "B",
     domain: "advanced_math",
     skill: "exponential_functions",
-    explanation: "32 = 2^5, so 2^x = 2^5 means x = 5.",
+    explanation: "$32 = 2^5$, so $2^x = 2^5$ means $x = 5$.",
   },
 ];
 

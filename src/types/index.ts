@@ -252,33 +252,13 @@ export interface ScoreReport {
 // UI STATE TYPES
 // ─────────────────────────────────────────────────────────
 
-export type OnboardingStep = "welcome" | "goal" | "mode" | "section";
-export type GoalId = "first_time" | "improve_score" | "test_ready";
-export type ModeId = "endless" | "timed";
-export type SectionId = "reading_writing" | "math" | "both";
+export type SectionId = "reading_writing" | "math";
 
-export interface OnboardingGoal {
-  id: GoalId;
-  label: string;
-  icon: string;
-  desc: string;
-}
-
-export interface OnboardingMode {
-  id: ModeId;
-  label: string;
-  icon: string;
-  desc: string;
-  features: string[];
-  recommended: boolean;
-}
-
-export interface OnboardingSection {
+export interface PracticeSection {
   id: SectionId;
   label: string;
   questions: number;
   time: string;
-  icon: string;
 }
 
 export interface AppState {

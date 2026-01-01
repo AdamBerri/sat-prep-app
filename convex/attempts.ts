@@ -6,6 +6,7 @@ export const createAttempt = mutation({
   args: {
     visitorId: v.string(),
     mode: v.union(v.literal("sat"), v.literal("practice"), v.literal("endless")),
+    section: v.optional(v.union(v.literal("reading_writing"), v.literal("math"))),
     examId: v.optional(v.id("exams")),
   },
   handler: async (ctx, args) => {
@@ -15,6 +16,7 @@ export const createAttempt = mutation({
       visitorId: args.visitorId,
       examId: args.examId,
       mode: args.mode,
+      section: args.section,
       currentSectionIndex: 0,
       currentQuestionIndex: 0,
       status: "in_progress",
@@ -26,16 +28,31 @@ export const createAttempt = mutation({
   },
 });
 
-// Get current attempt for a visitor
+// Get current attempt for a visitor (with answer stats for resume display)
 export const getCurrentAttempt = query({
   args: { visitorId: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const attempt = await ctx.db
       .query("examAttempts")
       .withIndex("by_visitor_and_status", (q) =>
         q.eq("visitorId", args.visitorId).eq("status", "in_progress")
       )
       .first();
+
+    if (!attempt) return null;
+
+    // Get answer count for this attempt
+    const answers = await ctx.db
+      .query("userAnswers")
+      .withIndex("by_attempt", (q) => q.eq("attemptId", attempt._id))
+      .collect();
+
+    const answeredCount = answers.filter((a) => a.selectedAnswer).length;
+
+    return {
+      ...attempt,
+      answeredCount,
+    };
   },
 });
 

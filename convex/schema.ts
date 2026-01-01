@@ -201,6 +201,7 @@ export default defineSchema({
     examId: v.optional(v.id("exams")),
     questionSetId: v.optional(v.id("questionSets")),
     mode: v.union(v.literal("sat"), v.literal("practice"), v.literal("endless")),
+    section: v.optional(v.union(v.literal("reading_writing"), v.literal("math"))), // Which section user is practicing
     currentSectionIndex: v.number(),
     currentQuestionIndex: v.number(),
     sectionStates: v.optional(

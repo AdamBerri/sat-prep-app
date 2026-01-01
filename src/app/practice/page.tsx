@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,18 +11,14 @@ import type {
   ExamMode,
   SectionId,
   LocalUserAnswer,
-  GoalId,
-  ModeId,
-  OnboardingStep,
 } from "@/types";
 import {
   SAT_CONFIG,
-  GOALS,
-  createModes,
   SECTIONS,
   formatTime,
   formatDomain,
 } from "@/lib/constants";
+import { MathText } from "@/components/MathText";
 import { getVisitorId } from "@/lib/visitor";
 import {
   Leaf,
@@ -38,6 +34,8 @@ import {
   RotateCcw,
   Eye,
   AlertCircle,
+  Calculator,
+  PlayCircle,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────
@@ -248,7 +246,7 @@ function AnswerOptionButton({
             isCrossedOut ? "line-through text-[var(--ink-faded)]" : ""
           }`}
         >
-          {content}
+          <MathText text={content} />
         </span>
       </button>
       {!isReviewMode && (
@@ -267,50 +265,37 @@ function AnswerOptionButton({
 }
 
 // ─────────────────────────────────────────────────────────
-// ONBOARDING MODAL
+// RESUME PROMPT (for returning users with in-progress session)
 // ─────────────────────────────────────────────────────────
 
-function OnboardingModal({
-  onStart,
-  isLoading,
+function ResumePrompt({
+  attempt,
+  onContinue,
+  onStartFresh,
   onClose,
-  initialMode,
-  initialSection,
 }: {
-  onStart: (params: { mode: ExamMode; section: SectionId }) => void;
-  isLoading: boolean;
-  onClose: () => void;
-  initialMode?: string | null;
-  initialSection?: string | null;
-}) {
-  const [step, setStep] = useState<OnboardingStep>("goal");
-  const [selectedGoal, setSelectedGoal] = useState<GoalId | null>(null);
-  const [selectedMode, setSelectedMode] = useState<ModeId | null>(
-    initialMode === "timed" ? "timed" : null
-  );
-  const [selectedSection, setSelectedSection] = useState<SectionId | null>(
-    initialSection as SectionId | null
-  );
-
-  const modes = useMemo(() => createModes(selectedGoal), [selectedGoal]);
-
-  // Skip to section if mode is pre-selected
-  useEffect(() => {
-    if (initialMode === "timed") {
-      setStep("section");
-    }
-  }, [initialMode]);
-
-  const handleStart = () => {
-    if (selectedMode && selectedSection) {
-      const examMode: ExamMode = selectedMode === "timed" ? "sat" : "practice";
-      onStart({ mode: examMode, section: selectedSection });
-    }
+  attempt: {
+    section?: "reading_writing" | "math";
+    mode: string;
+    answeredCount: number;
+    startedAt: number;
   };
+  onContinue: () => void;
+  onStartFresh: () => void;
+  onClose: () => void;
+}) {
+  const sectionLabel = attempt.section === "math" ? "Math" :
+                       attempt.section === "reading_writing" ? "Reading & Writing" :
+                       "Full SAT Test";
+
+  const totalQuestions = attempt.section === "math" ? 44 :
+                         attempt.section === "reading_writing" ? 54 : 98;
+
+  const timeAgo = getTimeAgo(attempt.startedAt);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="card-paper max-w-lg w-full p-6 sm:p-8 rounded-2xl relative max-h-[90vh] overflow-y-auto">
+    <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-lg hover:bg-[var(--paper-aged)] text-[var(--ink-faded)]"
@@ -318,156 +303,215 @@ function OnboardingModal({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Goal Step */}
-        {step === "goal" && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-[var(--grass-light)] to-[var(--grass-dark)] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Leaf className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="font-display text-2xl font-bold text-[var(--ink-black)]">
-                What's your goal?
-              </h2>
+        <div className="card-paper p-6 sm:p-8 rounded-2xl border-2 border-[var(--grass-medium)]">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-14 h-14 bg-gradient-to-br from-[var(--grass-light)] to-[var(--grass-dark)] rounded-xl flex items-center justify-center">
+              <PlayCircle className="w-7 h-7 text-white" />
             </div>
-            <div className="space-y-3">
-              {GOALS.map((goal) => (
-                <button
-                  key={goal.id}
-                  onClick={() => {
-                    setSelectedGoal(goal.id);
-                    setStep("mode");
-                  }}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-all font-body ${
-                    selectedGoal === goal.id
-                      ? "border-[var(--grass-dark)] bg-[var(--grass-light)]/20"
-                      : "border-[var(--paper-lines)] hover:border-[var(--grass-medium)] bg-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-2xl">{goal.icon}</span>
-                    <div>
-                      <div className="font-semibold text-[var(--ink-black)]">
-                        {goal.label}
-                      </div>
-                      <div className="text-sm text-[var(--ink-faded)]">
-                        {goal.desc}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              ))}
+            <div>
+              <h2 className="font-display text-xl font-bold text-[var(--ink-black)]">
+                Resume Your Session
+              </h2>
+              <p className="font-body text-sm text-[var(--ink-faded)]">
+                You have an in-progress session
+              </p>
             </div>
           </div>
-        )}
 
-        {/* Mode Step */}
-        {step === "mode" && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="font-display text-2xl font-bold text-[var(--ink-black)]">
-                Choose your mode
-              </h2>
+          <div className="bg-[var(--paper-warm)] rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-3 mb-2">
+              {attempt.section === "math" ? (
+                <Calculator className="w-5 h-5 text-[var(--grass-dark)]" />
+              ) : (
+                <BookOpen className="w-5 h-5 text-[var(--grass-dark)]" />
+              )}
+              <span className="font-display font-semibold text-[var(--ink-black)]">
+                {sectionLabel}
+              </span>
             </div>
-            <div className="space-y-3">
-              {modes.map((mode) => (
-                <button
-                  key={mode.id}
-                  onClick={() => {
-                    setSelectedMode(mode.id);
-                    setStep("section");
-                  }}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-all font-body ${
-                    selectedMode === mode.id
-                      ? "border-[var(--grass-dark)] bg-[var(--grass-light)]/20"
-                      : "border-[var(--paper-lines)] hover:border-[var(--grass-medium)] bg-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-2xl">{mode.icon}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-[var(--ink-black)]">
-                          {mode.label}
-                        </span>
-                        {mode.recommended && (
-                          <span className="text-xs px-2 py-0.5 bg-[var(--grass-dark)] text-white rounded-full">
-                            Recommended
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-[var(--ink-faded)]">
-                        {mode.desc}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              ))}
+            <div className="font-body text-sm text-[var(--ink-faded)] space-y-1">
+              <p>{attempt.answeredCount} of {totalQuestions} questions answered</p>
+              <p>Started {timeAgo}</p>
             </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => setStep("goal")}
-              className="text-[var(--ink-faded)] hover:text-[var(--ink-black)] font-body flex items-center gap-1"
+              onClick={onContinue}
+              className="btn-grass flex-1 flex items-center justify-center gap-2"
             >
-              <ChevronLeft className="w-4 h-4" /> Back
+              <PlayCircle className="w-4 h-4" />
+              Continue
+            </button>
+            <button
+              onClick={onStartFresh}
+              className="btn-outline-wood flex-1 flex items-center justify-center gap-2"
+            >
+              Start Fresh
             </button>
           </div>
-        )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-        {/* Section Step */}
-        {step === "section" && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="font-display text-2xl font-bold text-[var(--ink-black)]">
-                What do you want to practice?
-              </h2>
-            </div>
-            <div className="space-y-3">
-              {SECTIONS.map((section) => (
-                <button
-                  key={section.id}
-                  onClick={() => setSelectedSection(section.id)}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-all font-body ${
-                    selectedSection === section.id
-                      ? "border-[var(--grass-dark)] bg-[var(--grass-light)]/20"
-                      : "border-[var(--paper-lines)] hover:border-[var(--grass-medium)] bg-white"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <span className="text-2xl">{section.icon}</span>
-                      <span className="font-semibold text-[var(--ink-black)]">
-                        {section.label}
-                      </span>
-                    </div>
-                    <div className="text-sm text-[var(--ink-faded)]">
-                      {section.questions} questions
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="flex justify-between items-center pt-4">
-              <button
-                onClick={() => setStep(initialMode ? "section" : "mode")}
-                className="text-[var(--ink-faded)] hover:text-[var(--ink-black)] font-body flex items-center gap-1"
-              >
-                <ChevronLeft className="w-4 h-4" /> Back
-              </button>
-              <button
-                onClick={handleStart}
-                disabled={!selectedSection || isLoading}
-                className="btn-grass flex items-center gap-2"
-              >
-                {isLoading ? (
-                  "Loading..."
-                ) : (
-                  <>
-                    Start Practice <ChevronRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </div>
+function getTimeAgo(timestamp: number): string {
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  if (diffMins > 0) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+  return "just now";
+}
+
+// ─────────────────────────────────────────────────────────
+// SESSION SELECTOR (main practice selection screen)
+// ─────────────────────────────────────────────────────────
+
+function SessionSelector({
+  onSelectSection,
+  onSelectFullTest,
+  onClose,
+  isLoading,
+}: {
+  onSelectSection: (section: SectionId) => void;
+  onSelectFullTest: () => void;
+  onClose: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center p-4">
+      <div className="max-w-lg w-full">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-lg hover:bg-[var(--paper-aged)] text-[var(--ink-faded)]"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-gradient-to-br from-[var(--grass-light)] to-[var(--grass-dark)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Leaf className="w-8 h-8 text-white" />
           </div>
-        )}
+          <h1 className="font-display text-2xl font-bold text-[var(--ink-black)]">
+            What do you want to practice?
+          </h1>
+        </div>
+
+        {/* Section Cards */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {SECTIONS.map((section) => (
+            <button
+              key={section.id}
+              onClick={() => onSelectSection(section.id)}
+              disabled={isLoading}
+              className="card-paper p-6 rounded-xl border-2 border-[var(--paper-lines)] hover:border-[var(--grass-medium)] transition-all text-center group disabled:opacity-50"
+            >
+              <div className="w-12 h-12 bg-[var(--grass-light)]/30 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-[var(--grass-light)]/50 transition-colors">
+                {section.id === "math" ? (
+                  <Calculator className="w-6 h-6 text-[var(--grass-dark)]" />
+                ) : (
+                  <BookOpen className="w-6 h-6 text-[var(--grass-dark)]" />
+                )}
+              </div>
+              <h3 className="font-display font-semibold text-[var(--ink-black)] mb-1">
+                {section.label}
+              </h3>
+              <p className="font-body text-sm text-[var(--ink-faded)]">
+                {section.questions} questions
+              </p>
+            </button>
+          ))}
+        </div>
+
+        {/* Full Test Option */}
+        <button
+          onClick={onSelectFullTest}
+          disabled={isLoading}
+          className="w-full card-paper p-4 rounded-xl border-2 border-[var(--paper-lines)] hover:border-[var(--wood-medium)] transition-all flex items-center gap-4 disabled:opacity-50"
+        >
+          <div className="w-12 h-12 bg-[var(--wood-light)]/30 rounded-xl flex items-center justify-center">
+            <Clock className="w-6 h-6 text-[var(--wood-dark)]" />
+          </div>
+          <div className="text-left flex-1">
+            <h3 className="font-display font-semibold text-[var(--ink-black)]">
+              Full SAT Test
+            </h3>
+            <p className="font-body text-sm text-[var(--ink-faded)]">
+              98 questions &bull; 2h 14min &bull; Timed
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-[var(--ink-faded)]" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// FULL TEST CONFIRMATION MODAL
+// ─────────────────────────────────────────────────────────
+
+function FullTestConfirmation({
+  onConfirm,
+  onCancel,
+  isLoading,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="card-paper max-w-md w-full p-6 sm:p-8 rounded-2xl">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-[var(--wood-light)]/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Clock className="w-8 h-8 text-[var(--wood-dark)]" />
+          </div>
+          <h2 className="font-display text-2xl font-bold text-[var(--ink-black)] mb-2">
+            Ready for the full test?
+          </h2>
+          <p className="font-body text-[var(--ink-faded)]">
+            This simulates real SAT conditions
+          </p>
+        </div>
+
+        <div className="bg-[var(--paper-warm)] rounded-xl p-4 mb-6 space-y-2">
+          <div className="flex items-center gap-3 font-body text-sm text-[var(--ink-black)]">
+            <span className="w-2 h-2 bg-[var(--grass-dark)] rounded-full" />
+            98 questions total
+          </div>
+          <div className="flex items-center gap-3 font-body text-sm text-[var(--ink-black)]">
+            <span className="w-2 h-2 bg-[var(--grass-dark)] rounded-full" />
+            2 hours 14 minutes timed
+          </div>
+          <div className="flex items-center gap-3 font-body text-sm text-[var(--ink-black)]">
+            <span className="w-2 h-2 bg-[var(--grass-dark)] rounded-full" />
+            Reading & Writing first, then Math
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={onCancel}
+            className="btn-outline-wood flex-1"
+            disabled={isLoading}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="btn-grass flex-1 flex items-center justify-center gap-2"
+            disabled={isLoading}
+          >
+            {isLoading ? "Starting..." : "Start Full Test"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -540,7 +584,7 @@ function ResultsScreen({
             Your Results
           </h1>
           <p className="font-body text-[var(--ink-faded)]">
-            Great effort! Here's how you did.
+            Great effort! Here&apos;s how you did.
           </p>
         </div>
 
@@ -924,9 +968,9 @@ function ExamScreen({
 
             {/* Question Prompt */}
             <div className="question-card p-4 sm:p-6">
-              <p className="font-body text-base sm:text-lg text-[var(--ink-black)] leading-relaxed">
-                {currentQuestion.prompt}
-              </p>
+              <div className="font-body text-base sm:text-lg text-[var(--ink-black)] leading-relaxed">
+                <MathText text={currentQuestion.prompt} />
+              </div>
             </div>
 
             {/* Answer Options */}
@@ -1003,30 +1047,84 @@ function ExamScreen({
 // MAIN PRACTICE PAGE
 // ─────────────────────────────────────────────────────────
 
+type ScreenState = "selector" | "resume" | "confirm-full-test" | "exam" | "results";
+
+// Wrapper component to handle Suspense for useSearchParams
 export default function PracticePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
+          <div className="text-center">
+            <Leaf className="w-12 h-12 text-[var(--grass-dark)] mx-auto mb-4 animate-pulse" />
+            <p className="font-body text-[var(--ink-faded)]">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <PracticePageContent />
+    </Suspense>
+  );
+}
+
+function PracticePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoaded: isUserLoaded } = useUser();
 
-  const [screen, setScreen] = useState<"onboarding" | "exam" | "results">("onboarding");
+  const [screen, setScreen] = useState<ScreenState>("selector");
   const [mode, setMode] = useState<ExamMode>("practice");
-  const [section, setSection] = useState<SectionId>("both");
+  const [section, setSection] = useState<SectionId | null>(null);
   const [attemptId, setAttemptId] = useState<Id<"examAttempts"> | null>(null);
   const [visitorId, setVisitorId] = useState<string>("");
   const [localAnswers, setLocalAnswers] = useState<Map<string, LocalUserAnswer>>(new Map());
+  const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
     setVisitorId(getVisitorId());
   }, []);
 
-  const initialMode = searchParams.get("mode");
-  const initialSection = searchParams.get("section");
+  const urlMode = searchParams.get("mode");
+  const urlSection = searchParams.get("section");
+
+  // Get current in-progress attempt for resume
+  const currentAttempt = useQuery(
+    api.attempts.getCurrentAttempt,
+    visitorId ? { visitorId: user?.id ?? visitorId } : "skip"
+  );
 
   const allQuestions = useQuery(api.questions.getAllQuestions);
 
   const createAttempt = useMutation(api.attempts.createAttempt);
   const completeAttempt = useMutation(api.attempts.completeAttempt);
+  const abandonAttempt = useMutation(api.attempts.abandonAttempt);
   const submitAnswers = useMutation(api.answers.submitAnswers);
+
+  // Determine initial screen based on URL params and existing attempt
+  useEffect(() => {
+    if (!isUserLoaded || currentAttempt === undefined) return;
+
+    // URL param: direct to section
+    if (urlSection === "math" || urlSection === "reading_writing") {
+      handleStartSection(urlSection as SectionId);
+      return;
+    }
+
+    // URL param: full test mode
+    if (urlMode === "timed" || urlMode === "sat") {
+      setScreen("confirm-full-test");
+      return;
+    }
+
+    // Has in-progress attempt? Show resume prompt
+    if (currentAttempt) {
+      setScreen("resume");
+      return;
+    }
+
+    // Default: show selector
+    setScreen("selector");
+  }, [isUserLoaded, currentAttempt, urlMode, urlSection]);
 
   const questions = useMemo(() => {
     if (!allQuestions) return [];
@@ -1039,31 +1137,73 @@ export default function PracticePage() {
     return allQuestions;
   }, [allQuestions, section]);
 
-  const handleStart = useCallback(
-    async ({
-      mode: newMode,
-      section: newSection,
-    }: {
-      mode: ExamMode;
-      section: SectionId;
-    }) => {
-      setMode(newMode);
-      setSection(newSection);
+  const handleStartSection = useCallback(
+    async (selectedSection: SectionId) => {
+      if (isStarting) return;
+      setIsStarting(true);
+
+      setMode("practice");
+      setSection(selectedSection);
       setLocalAnswers(new Map());
 
       try {
         const id = await createAttempt({
           visitorId: user?.id ?? visitorId,
-          mode: newMode,
+          mode: "practice",
+          section: selectedSection,
         });
         setAttemptId(id);
         setScreen("exam");
       } catch (error) {
         console.error("Failed to create attempt:", error);
+      } finally {
+        setIsStarting(false);
       }
     },
-    [visitorId, user, createAttempt]
+    [visitorId, user, createAttempt, isStarting]
   );
+
+  const handleStartFullTest = useCallback(async () => {
+    if (isStarting) return;
+    setIsStarting(true);
+
+    setMode("sat");
+    setSection(null);
+    setLocalAnswers(new Map());
+
+    try {
+      const id = await createAttempt({
+        visitorId: user?.id ?? visitorId,
+        mode: "sat",
+      });
+      setAttemptId(id);
+      setScreen("exam");
+    } catch (error) {
+      console.error("Failed to create attempt:", error);
+    } finally {
+      setIsStarting(false);
+    }
+  }, [visitorId, user, createAttempt, isStarting]);
+
+  const handleResume = useCallback(() => {
+    if (!currentAttempt) return;
+
+    setAttemptId(currentAttempt._id);
+    setMode(currentAttempt.mode as ExamMode);
+    setSection(currentAttempt.section ?? null);
+    setScreen("exam");
+  }, [currentAttempt]);
+
+  const handleStartFresh = useCallback(async () => {
+    if (currentAttempt) {
+      try {
+        await abandonAttempt({ attemptId: currentAttempt._id });
+      } catch (error) {
+        console.error("Failed to abandon attempt:", error);
+      }
+    }
+    setScreen("selector");
+  }, [currentAttempt, abandonAttempt]);
 
   const handleComplete = useCallback(async () => {
     if (!attemptId) return;
@@ -1079,7 +1219,7 @@ export default function PracticePage() {
   }, [attemptId, submitAnswers, completeAttempt]);
 
   const handleRestart = useCallback(() => {
-    setScreen("onboarding");
+    setScreen("selector");
     setAttemptId(null);
     setLocalAnswers(new Map());
   }, []);
@@ -1092,14 +1232,10 @@ export default function PracticePage() {
     router.push("/dashboard");
   }, [router]);
 
-  const handleClose = useCallback(() => {
-    router.push("/dashboard");
-  }, [router]);
-
   const isLoading = allQuestions === undefined;
 
   // Loading state
-  if (!isUserLoaded) {
+  if (!isUserLoaded || currentAttempt === undefined) {
     return (
       <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
         <div className="text-center">
@@ -1112,13 +1248,34 @@ export default function PracticePage() {
 
   return (
     <>
-      {screen === "onboarding" && (
-        <OnboardingModal
-          onStart={handleStart}
-          isLoading={isLoading}
-          onClose={handleClose}
-          initialMode={initialMode}
-          initialSection={initialSection}
+      {screen === "selector" && (
+        <SessionSelector
+          onSelectSection={handleStartSection}
+          onSelectFullTest={() => setScreen("confirm-full-test")}
+          onClose={handleHome}
+          isLoading={isLoading || isStarting}
+        />
+      )}
+
+      {screen === "resume" && currentAttempt && (
+        <ResumePrompt
+          attempt={{
+            section: currentAttempt.section,
+            mode: currentAttempt.mode,
+            answeredCount: currentAttempt.answeredCount,
+            startedAt: currentAttempt.startedAt,
+          }}
+          onContinue={handleResume}
+          onStartFresh={handleStartFresh}
+          onClose={handleHome}
+        />
+      )}
+
+      {screen === "confirm-full-test" && (
+        <FullTestConfirmation
+          onConfirm={handleStartFullTest}
+          onCancel={() => setScreen("selector")}
+          isLoading={isStarting}
         />
       )}
 

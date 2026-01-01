@@ -1,9 +1,6 @@
 import type {
   SATConfig,
-  OnboardingGoal,
-  OnboardingMode,
-  OnboardingSection,
-  GoalId,
+  PracticeSection,
 } from "@/types";
 
 // ============================================================================
@@ -41,60 +38,22 @@ export const SAT_CONFIG: SATConfig = {
 } as const;
 
 // ============================================================================
-// ONBOARDING OPTIONS
+// PRACTICE SECTIONS
 // ============================================================================
 
-export const GOALS: OnboardingGoal[] = [
-  {
-    id: "first_time",
-    label: "First time taking SAT",
-    icon: "🎯",
-    desc: "Get familiar with the format and question types",
-  },
-  {
-    id: "improve_score",
-    label: "Improve my score",
-    icon: "📈",
-    desc: "Practice areas where you need more work",
-  },
-  {
-    id: "test_ready",
-    label: "Test-day ready",
-    icon: "✅",
-    desc: "Simulate real exam conditions",
-  },
-];
-
-export const createModes = (selectedGoal: GoalId | null): OnboardingMode[] => [
-  {
-    id: "endless",
-    label: "Practice Mode",
-    icon: "∞",
-    desc: "No time pressure. Practice at your own pace.",
-    features: ["Unlimited questions", "Instant explanations", "No timer stress"],
-    recommended:
-      selectedGoal === "first_time" || selectedGoal === "improve_score",
-  },
-  {
-    id: "timed",
-    label: "Full Test",
-    icon: "⏱",
-    desc: "Simulate the real Digital SAT experience.",
-    features: ["98 questions total", "2 hours 14 minutes", "Realistic timing"],
-    recommended: selectedGoal === "test_ready",
-  },
-];
-
-export const SECTIONS: OnboardingSection[] = [
+export const SECTIONS: PracticeSection[] = [
   {
     id: "reading_writing",
     label: "Reading & Writing",
     questions: 54,
     time: "64 min",
-    icon: "📖",
   },
-  { id: "math", label: "Math", questions: 44, time: "70 min", icon: "🔢" },
-  { id: "both", label: "Full Test", questions: 98, time: "2h 14min", icon: "📝" },
+  {
+    id: "math",
+    label: "Math",
+    questions: 44,
+    time: "70 min",
+  },
 ];
 
 // ============================================================================

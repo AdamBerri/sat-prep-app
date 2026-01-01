@@ -14,6 +14,8 @@ import {
   Flame,
   Calendar,
   CheckCircle2,
+  PlayCircle,
+  Calculator,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -25,6 +27,11 @@ export default function DashboardPage() {
   const recentAttempts = useQuery(api.attempts.getRecentAttempts, {
     visitorId: user?.id ?? "",
     limit: 5,
+  });
+
+  // Get current in-progress attempt for resume card
+  const currentAttempt = useQuery(api.attempts.getCurrentAttempt, {
+    visitorId: user?.id ?? "",
   });
 
   const greeting = getGreeting();
@@ -86,6 +93,31 @@ export default function DashboardPage() {
             Quick Actions
           </h2>
           <div className="space-y-3">
+            {/* Resume Card - shown when there's an in-progress session */}
+            {currentAttempt && (
+              <Link
+                href="/practice"
+                className="card-paper p-4 rounded-xl border-2 border-[var(--grass-dark)] bg-[var(--grass-light)]/10 flex items-center gap-4 transition-colors hover:bg-[var(--grass-light)]/20"
+              >
+                <div className="w-10 h-10 rounded-lg bg-[var(--grass-dark)] flex items-center justify-center">
+                  <PlayCircle className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-display font-semibold text-[var(--grass-dark)]">
+                    Continue Practice
+                  </div>
+                  <div className="font-body text-sm text-[var(--ink-faded)]">
+                    {currentAttempt.section === "math"
+                      ? "Math"
+                      : currentAttempt.section === "reading_writing"
+                      ? "Reading & Writing"
+                      : "Full Test"}{" "}
+                    &bull; {currentAttempt.answeredCount} answered
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-[var(--grass-dark)]" />
+              </Link>
+            )}
             <QuickActionCard
               href="/practice?mode=timed"
               icon={Clock}
@@ -102,7 +134,7 @@ export default function DashboardPage() {
             />
             <QuickActionCard
               href="/practice?section=math"
-              icon={Target}
+              icon={Calculator}
               title="Math Section"
               description="Practice untimed"
               color="barn"

@@ -1,6 +1,7 @@
 "use client";
 
 import "./globals.css";
+import "katex/dist/katex.min.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ReactNode } from "react";
@@ -9,20 +10,7 @@ const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 const clerkAppearance = {
   variables: {
-    fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-    fontFamilyButtons: "'Inter', system-ui, -apple-system, sans-serif",
-  },
-  elements: {
-    formButtonPrimary: {
-      backgroundColor: "#5a8f4e",
-      "&:hover": {
-        backgroundColor: "#3d6b35",
-      },
-    },
-    card: {
-      boxShadow: "0 2px 8px rgba(44, 36, 22, 0.1)",
-      border: "1px solid #e0d6c8",
-    },
+    colorPrimary: "#5a8f4e",
   },
 };
 
