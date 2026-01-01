@@ -1,5 +1,5 @@
 {
-  "name": "sat-prep-app",
+  "name": "1600club",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -12,7 +12,9 @@
     "seed": "npx convex run seed:seedDatabase"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@clerk/nextjs": "^6.36.5",
+    "@google/genai": "^1.34.0",
     "@tailwindcss/oxide-darwin-arm64": "file:tailwindcss-oxide-darwin-arm64-4.1.18.tgz",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^25.0.3",
@@ -29,7 +31,8 @@
     "react-dom": "^19.2.3",
     "react-katex": "^3.1.0",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@types/katex": "^0.16.7",

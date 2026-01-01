@@ -1,5 +1,8 @@
-import { mutation } from "./_generated/server";
+import { mutation, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { ALL_GRAPH_QUESTION_TEMPLATES } from "./graphQuestionTemplates";
 
 // Sample passages for Reading & Writing
 const SAMPLE_PASSAGES = [
@@ -81,7 +84,7 @@ During REM sleep, the brain appears to forge unexpected connections between disp
   },
 ];
 
-// Reading & Writing question templates
+// Reading & Writing question templates with difficulty factors
 const RW_TEMPLATES = [
   {
     prompt: 'As used in the passage, "precipitate" most nearly means',
@@ -94,6 +97,14 @@ const RW_TEMPLATES = [
     correctAnswer: "B",
     domain: "craft_and_structure",
     skill: "vocabulary_in_context",
+    // Difficulty factors (0.0-1.0)
+    rwDifficulty: {
+      passageComplexity: 0.5,
+      inferenceDepth: 0.3,
+      vocabularyLevel: 0.7, // Higher - tests vocabulary
+      evidenceEvaluation: 0.2,
+      synthesisRequired: 0.2,
+    },
   },
   {
     prompt: "The main purpose of the passage is to",
@@ -106,6 +117,13 @@ const RW_TEMPLATES = [
     correctAnswer: "C",
     domain: "information_and_ideas",
     skill: "central_ideas",
+    rwDifficulty: {
+      passageComplexity: 0.5,
+      inferenceDepth: 0.4,
+      vocabularyLevel: 0.4,
+      evidenceEvaluation: 0.5,
+      synthesisRequired: 0.6, // Higher - requires synthesis
+    },
   },
   {
     prompt: "Which choice best describes the function of the second paragraph?",
@@ -118,6 +136,13 @@ const RW_TEMPLATES = [
     correctAnswer: "B",
     domain: "craft_and_structure",
     skill: "rhetorical_synthesis",
+    rwDifficulty: {
+      passageComplexity: 0.5,
+      inferenceDepth: 0.6, // Higher - rhetorical analysis
+      vocabularyLevel: 0.4,
+      evidenceEvaluation: 0.5,
+      synthesisRequired: 0.7, // Higher - structural synthesis
+    },
   },
   {
     prompt: "Based on the passage, which statement best describes the author's perspective?",
@@ -130,6 +155,13 @@ const RW_TEMPLATES = [
     correctAnswer: "A",
     domain: "information_and_ideas",
     skill: "command_of_evidence",
+    rwDifficulty: {
+      passageComplexity: 0.5,
+      inferenceDepth: 0.7, // High - requires inference about tone
+      vocabularyLevel: 0.4,
+      evidenceEvaluation: 0.6,
+      synthesisRequired: 0.5,
+    },
   },
   {
     prompt: "Which choice best states the central idea of the passage?",
@@ -142,10 +174,17 @@ const RW_TEMPLATES = [
     correctAnswer: "B",
     domain: "information_and_ideas",
     skill: "central_ideas",
+    rwDifficulty: {
+      passageComplexity: 0.5,
+      inferenceDepth: 0.5,
+      vocabularyLevel: 0.4,
+      evidenceEvaluation: 0.4,
+      synthesisRequired: 0.6,
+    },
   },
 ];
 
-// Math question templates (using LaTeX notation with $...$ delimiters)
+// Math question templates with difficulty factors (using LaTeX notation with $...$ delimiters)
 const MATH_TEMPLATES = [
   {
     prompt: "If $3x + 7 = 22$, what is the value of $6x + 14$?",
@@ -160,6 +199,14 @@ const MATH_TEMPLATES = [
     skill: "linear_equations",
     explanation:
       "First solve for $x$: $3x + 7 = 22$, so $3x = 15$, and $x = 5$. Then $6x + 14 = 6(5) + 14 = 30 + 14 = 44$. Alternatively, notice that $6x + 14 = 2(3x + 7) = 2(22) = 44$.",
+    // Difficulty factors (0.0-1.0)
+    mathDifficulty: {
+      reasoningSteps: 0.4, // Two-step problem with shortcut
+      algebraicComplexity: 0.3,
+      conceptualDepth: 0.4, // Pattern recognition helps
+      computationLoad: 0.3,
+      multiStepRequired: 0.5,
+    },
   },
   {
     prompt: "Which of the following is equivalent to $(x + 3)^2 - 9$?",
@@ -174,6 +221,13 @@ const MATH_TEMPLATES = [
     skill: "quadratic_equations",
     explanation:
       "Expand $(x + 3)^2 = x^2 + 6x + 9$. Then subtract 9: $x^2 + 6x + 9 - 9 = x^2 + 6x$.",
+    mathDifficulty: {
+      reasoningSteps: 0.3,
+      algebraicComplexity: 0.6, // Polynomial expansion
+      conceptualDepth: 0.5,
+      computationLoad: 0.4,
+      multiStepRequired: 0.4,
+    },
   },
   {
     prompt:
@@ -189,6 +243,13 @@ const MATH_TEMPLATES = [
     skill: "linear_equations",
     explanation:
       "Slope $= \\frac{y_2 - y_1}{x_2 - x_1} = \\frac{13 - 5}{6 - 2} = \\frac{8}{4} = 2$.",
+    mathDifficulty: {
+      reasoningSteps: 0.2, // Direct formula application
+      algebraicComplexity: 0.2,
+      conceptualDepth: 0.3,
+      computationLoad: 0.3,
+      multiStepRequired: 0.2,
+    },
   },
   {
     prompt: "If $f(x) = 2x^2 - 3x + 1$, what is $f(-2)$?",
@@ -203,6 +264,13 @@ const MATH_TEMPLATES = [
     skill: "quadratic_equations",
     explanation:
       "$f(-2) = 2(-2)^2 - 3(-2) + 1 = 2(4) + 6 + 1 = 8 + 6 + 1 = 15$.",
+    mathDifficulty: {
+      reasoningSteps: 0.3,
+      algebraicComplexity: 0.4,
+      conceptualDepth: 0.3, // Function notation
+      computationLoad: 0.5, // Sign handling with negatives
+      multiStepRequired: 0.3,
+    },
   },
   {
     prompt:
@@ -218,6 +286,13 @@ const MATH_TEMPLATES = [
     skill: "systems_of_equations",
     explanation:
       "Set the equations equal: $2x + 1 = -x + 7$. Solve: $3x = 6$, so $x = 2$. Then $y = 2(2) + 1 = 5$.",
+    mathDifficulty: {
+      reasoningSteps: 0.5, // Set equal, solve, substitute
+      algebraicComplexity: 0.4,
+      conceptualDepth: 0.5, // Systems understanding
+      computationLoad: 0.3,
+      multiStepRequired: 0.6,
+    },
   },
   {
     prompt: "If the ratio of $a$ to $b$ is $3:5$, and $b = 20$, what is $a$?",
@@ -232,6 +307,13 @@ const MATH_TEMPLATES = [
     skill: "ratios_and_proportions",
     explanation:
       "If $a:b = 3:5$, then $\\frac{a}{b} = \\frac{3}{5}$. With $b = 20$: $\\frac{a}{20} = \\frac{3}{5}$, so $a = 20 \\times \\frac{3}{5} = 12$.",
+    mathDifficulty: {
+      reasoningSteps: 0.3,
+      algebraicComplexity: 0.3,
+      conceptualDepth: 0.4, // Ratio understanding
+      computationLoad: 0.3,
+      multiStepRequired: 0.3,
+    },
   },
   {
     prompt:
@@ -247,6 +329,13 @@ const MATH_TEMPLATES = [
     skill: "right_triangles",
     explanation:
       "By the Pythagorean theorem: $a^2 + b^2 = c^2$. So $6^2 + b^2 = 10^2$, meaning $36 + b^2 = 100$, $b^2 = 64$, $b = 8$.",
+    mathDifficulty: {
+      reasoningSteps: 0.4,
+      algebraicComplexity: 0.3,
+      conceptualDepth: 0.5, // Pythagorean theorem
+      computationLoad: 0.4, // Square roots
+      multiStepRequired: 0.4,
+    },
   },
   {
     prompt: "What is the value of $x$ if $2^x = 32$?",
@@ -260,6 +349,13 @@ const MATH_TEMPLATES = [
     domain: "advanced_math",
     skill: "exponential_functions",
     explanation: "$32 = 2^5$, so $2^x = 2^5$ means $x = 5$.",
+    mathDifficulty: {
+      reasoningSteps: 0.3,
+      algebraicComplexity: 0.3,
+      conceptualDepth: 0.5, // Exponent understanding
+      computationLoad: 0.2, // Know powers of 2
+      multiStepRequired: 0.2,
+    },
   },
 ];
 
@@ -296,12 +392,19 @@ export const seedDatabase = mutation({
 
       if (!template || !passageId) continue;
 
+      // Compute overall difficulty from factors
+      const factors = Object.values(template.rwDifficulty);
+      const overallDifficulty = factors.reduce((sum, v) => sum + v, 0) / factors.length;
+      const legacyDifficulty = overallDifficulty < 0.33 ? 1 : overallDifficulty < 0.67 ? 2 : 3;
+
       const questionId = await ctx.db.insert("questions", {
         type: "multiple_choice",
         category: "reading_writing",
         domain: template.domain,
         skill: template.skill,
-        difficulty: Math.floor(Math.random() * 3) + 1, // 1-3
+        difficulty: legacyDifficulty,
+        overallDifficulty: overallDifficulty,
+        rwDifficulty: template.rwDifficulty,
         prompt: template.prompt,
         passageId: passageId,
         correctAnswer: template.correctAnswer,
@@ -354,12 +457,19 @@ export const seedDatabase = mutation({
 
       if (!template) continue;
 
+      // Compute overall difficulty from factors
+      const factors = Object.values(template.mathDifficulty);
+      const overallDifficulty = factors.reduce((sum, v) => sum + v, 0) / factors.length;
+      const legacyDifficulty = overallDifficulty < 0.33 ? 1 : overallDifficulty < 0.67 ? 2 : 3;
+
       const questionId = await ctx.db.insert("questions", {
         type: "multiple_choice",
         category: "math",
         domain: template.domain,
         skill: template.skill,
-        difficulty: Math.floor(Math.random() * 3) + 1, // 1-3
+        difficulty: legacyDifficulty,
+        overallDifficulty: overallDifficulty,
+        mathDifficulty: template.mathDifficulty,
         prompt: template.prompt,
         correctAnswer: template.correctAnswer,
         tags: [template.domain, template.skill],
@@ -415,6 +525,257 @@ export const seedDatabase = mutation({
   },
 });
 
+// ─────────────────────────────────────────────────────────
+// GRAPH QUESTION SEEDING WITH TWO-STAGE PIPELINE
+// Stage 1: Claude generates image prompts
+// Stage 2: Nano Banana Pro renders images
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Clear existing graph questions and their images.
+ * Run this before re-seeding with new approach.
+ */
+export const clearGraphQuestions = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Find all questions with figures
+    const graphQuestions = await ctx.db
+      .query("questions")
+      .filter((q) => q.neq(q.field("figure"), undefined))
+      .collect();
+
+    let deletedQuestions = 0;
+    let deletedImages = 0;
+
+    for (const question of graphQuestions) {
+      // Delete associated answer options
+      const options = await ctx.db
+        .query("answerOptions")
+        .filter((q) => q.eq(q.field("questionId"), question._id))
+        .collect();
+      for (const opt of options) {
+        await ctx.db.delete(opt._id);
+      }
+
+      // Delete associated explanations
+      const explanations = await ctx.db
+        .query("explanations")
+        .filter((q) => q.eq(q.field("questionId"), question._id))
+        .collect();
+      for (const exp of explanations) {
+        await ctx.db.delete(exp._id);
+      }
+
+      // Delete the image if it exists
+      if (question.figure?.imageId) {
+        const image = await ctx.db.get(question.figure.imageId);
+        if (image) {
+          // Delete from storage too
+          await ctx.storage.delete(image.storageId);
+          await ctx.db.delete(question.figure.imageId);
+          deletedImages++;
+        }
+      }
+
+      // Delete the question
+      await ctx.db.delete(question._id);
+      deletedQuestions++;
+    }
+
+    return {
+      message: `Cleared ${deletedQuestions} graph questions and ${deletedImages} images`,
+      deletedQuestions,
+      deletedImages,
+    };
+  },
+});
+
+/**
+ * Seed graph questions using the two-stage pipeline:
+ * 1. Claude analyzes questions and generates image prompts
+ * 2. Nano Banana Pro renders the images
+ *
+ * This is the scalable approach for thousands of questions.
+ */
+export const seedGraphQuestions = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Check if graph questions already exist
+    const existingGraphQuestions = await ctx.db
+      .query("questions")
+      .filter((q) => q.neq(q.field("figure"), undefined))
+      .first();
+
+    if (existingGraphQuestions) {
+      return {
+        message: "Graph questions already exist. Run clearGraphQuestions first to re-seed.",
+        seeded: false,
+      };
+    }
+
+    // Prepare questions for Claude to generate image prompts
+    const questionsForClaude = ALL_GRAPH_QUESTION_TEMPLATES.map((template) => ({
+      questionPrompt: template.prompt,
+      options: template.options,
+      correctAnswer: template.correctAnswer,
+      figureType: template.figureType,
+      domain: template.domain,
+      skill: template.skill,
+    }));
+
+    // Schedule the two-stage pipeline action
+    await ctx.scheduler.runAfter(
+      0,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (internal as any).graphImagePipeline.generateGraphImages,
+      { questions: questionsForClaude }
+    );
+
+    return {
+      message: "Two-stage graph image pipeline started",
+      seeded: true,
+      pendingQuestions: questionsForClaude.length,
+      note: "Stage 1: Claude generating prompts → Stage 2: Nano Banana Pro rendering images",
+    };
+  },
+});
+
+/**
+ * Create graph questions after images have been generated.
+ * Call this mutation with the results from batchGenerateImages.
+ */
+export const createGraphQuestionsWithImages = internalMutation({
+  args: {
+    imageResults: v.array(
+      v.object({
+        questionIndex: v.number(),
+        imageId: v.optional(v.string()),
+        error: v.optional(v.string()),
+        claudePrompt: v.optional(v.string()), // Store Claude's generated prompt for reference
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const templates = ALL_GRAPH_QUESTION_TEMPLATES;
+    const createdQuestions: string[] = [];
+    const errors: string[] = [];
+
+    for (const result of args.imageResults) {
+      if (result.error || !result.imageId) {
+        errors.push(
+          `Question ${result.questionIndex}: ${result.error || "No imageId"}`
+        );
+        continue;
+      }
+
+      const template = templates[result.questionIndex];
+      if (!template) {
+        errors.push(`Question ${result.questionIndex}: Template not found`);
+        continue;
+      }
+
+      // Create the question with figure reference
+      const questionId = await ctx.db.insert("questions", {
+        type: "multiple_choice" as const,
+        category: "math" as const,
+        domain: template.domain,
+        skill: template.skill,
+        difficulty: 2,
+        prompt: template.prompt,
+        figure: {
+          imageId: result.imageId as Id<"images">,
+          figureType: template.figureType,
+          caption: template.imageAltText,
+        },
+        correctAnswer: template.correctAnswer,
+        tags: [template.domain, template.skill, "has_figure", template.figureType],
+      });
+
+      // Insert answer options
+      for (let j = 0; j < template.options.length; j++) {
+        const option = template.options[j];
+        await ctx.db.insert("answerOptions", {
+          questionId,
+          key: option.key,
+          content: option.content,
+          order: j,
+        });
+      }
+
+      // Insert explanation
+      await ctx.db.insert("explanations", {
+        questionId,
+        correctExplanation: template.explanation,
+        wrongAnswerExplanations: {},
+        commonMistakes: [],
+      });
+
+      createdQuestions.push(questionId.toString());
+    }
+
+    return {
+      created: createdQuestions.length,
+      errors: errors.length,
+      errorDetails: errors,
+    };
+  },
+});
+
+/**
+ * Manually create a single graph question with a pre-generated image.
+ * Useful for testing or adding individual questions.
+ */
+export const createSingleGraphQuestion = mutation({
+  args: {
+    templateIndex: v.number(),
+    imageId: v.id("images"),
+  },
+  handler: async (ctx, args) => {
+    const template = ALL_GRAPH_QUESTION_TEMPLATES[args.templateIndex];
+    if (!template) {
+      throw new Error(`Template index ${args.templateIndex} not found`);
+    }
+
+    // Create the question
+    const questionId = await ctx.db.insert("questions", {
+      type: "multiple_choice" as const,
+      category: "math" as const,
+      domain: template.domain,
+      skill: template.skill,
+      difficulty: 2,
+      prompt: template.prompt,
+      figure: {
+        imageId: args.imageId,
+        figureType: template.figureType,
+        caption: template.imageAltText,
+      },
+      correctAnswer: template.correctAnswer,
+      tags: [template.domain, template.skill, "has_figure", template.figureType],
+    });
+
+    // Insert answer options
+    for (let j = 0; j < template.options.length; j++) {
+      const option = template.options[j];
+      await ctx.db.insert("answerOptions", {
+        questionId,
+        key: option.key,
+        content: option.content,
+        order: j,
+      });
+    }
+
+    // Insert explanation
+    await ctx.db.insert("explanations", {
+      questionId,
+      correctExplanation: template.explanation,
+      wrongAnswerExplanations: {},
+      commonMistakes: [],
+    });
+
+    return { questionId };
+  },
+});
+
 // Clear all data (for development)
 export const clearDatabase = mutation({
   args: {},
@@ -430,6 +791,7 @@ export const clearDatabase = mutation({
       "questions",
       "passageFigures",
       "passages",
+      "images",
       "examSections",
       "exams",
       "questionSets",

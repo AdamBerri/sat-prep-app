@@ -1,6 +1,6 @@
-# GreenScore - SAT Prep
+# 1600Club - SAT Prep
 
-A beautiful, full-stack SAT preparation application with a fresh rustic/nature aesthetic. Built with Next.js, Convex, and Clerk.
+Join the club. Get the score. A gamified SAT preparation app that makes studying addictive. Built with Next.js, Convex, and Clerk.
 
 ## Features
 

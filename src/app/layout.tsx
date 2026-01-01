@@ -19,8 +19,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <ClerkProvider appearance={clerkAppearance}>
       <html lang="en">
         <head>
-          <title>GreenScore - SAT Prep That Grows With You</title>
-          <meta name="description" content="The fresh, natural way to prepare for the SAT. Unlimited practice, smart learning, real results." />
+          <title>1600Club - Join the club. Get the score.</title>
+          <meta name="description" content="Your path to the perfect SAT score. Gamified practice, adaptive learning, unlimited questions. Level up to 1600." />
         </head>
         <body className="min-h-screen">
           <ConvexProvider client={convex}>{children}</ConvexProvider>

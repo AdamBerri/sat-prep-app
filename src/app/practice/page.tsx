@@ -19,7 +19,14 @@ import {
   formatDomain,
 } from "@/lib/constants";
 import { MathText } from "@/components/MathText";
+import { QuestionFigure } from "@/components/QuestionFigure";
 import { getVisitorId } from "@/lib/visitor";
+import {
+  usePracticeStore,
+  useNeedsAttemptCheck,
+  useScreen,
+  type PendingAttempt,
+} from "@/stores/practiceStore";
 import {
   Leaf,
   Flag,
@@ -385,7 +392,12 @@ function SessionSelector({
   isLoading: boolean;
 }) {
   return (
-    <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        background: 'radial-gradient(ellipse at center, var(--paper-cream) 0%, var(--paper-warm) 70%, var(--paper-aged) 100%)'
+      }}
+    >
       <div className="max-w-lg w-full">
         <button
           onClick={onClose}
@@ -410,9 +422,9 @@ function SessionSelector({
               key={section.id}
               onClick={() => onSelectSection(section.id)}
               disabled={isLoading}
-              className="card-paper p-6 rounded-xl border-2 border-[var(--paper-lines)] hover:border-[var(--grass-medium)] transition-all text-center group disabled:opacity-50"
+              className="practice-card p-6 rounded-xl text-center group"
             >
-              <div className="w-12 h-12 bg-[var(--grass-light)]/30 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-[var(--grass-light)]/50 transition-colors">
+              <div className="practice-icon w-12 h-12 bg-[var(--grass-light)]/30 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-[var(--grass-light)]/50 transition-colors">
                 {section.id === "math" ? (
                   <Calculator className="w-6 h-6 text-[var(--grass-dark)]" />
                 ) : (
@@ -425,6 +437,7 @@ function SessionSelector({
               <p className="font-body text-sm text-[var(--ink-faded)]">
                 {section.questions} questions
               </p>
+              <ChevronRight className="practice-chevron w-5 h-5 text-[var(--grass-dark)] mx-auto mt-2" />
             </button>
           ))}
         </div>
@@ -433,9 +446,9 @@ function SessionSelector({
         <button
           onClick={onSelectFullTest}
           disabled={isLoading}
-          className="w-full card-paper p-4 rounded-xl border-2 border-[var(--paper-lines)] hover:border-[var(--wood-medium)] transition-all flex items-center gap-4 disabled:opacity-50"
+          className="practice-card w-full p-4 rounded-xl flex items-center gap-4 group"
         >
-          <div className="w-12 h-12 bg-[var(--wood-light)]/30 rounded-xl flex items-center justify-center">
+          <div className="practice-icon w-12 h-12 bg-[var(--wood-light)]/30 rounded-xl flex items-center justify-center">
             <Clock className="w-6 h-6 text-[var(--wood-dark)]" />
           </div>
           <div className="text-left flex-1">
@@ -446,7 +459,7 @@ function SessionSelector({
               98 questions &bull; 2h 14min &bull; Timed
             </p>
           </div>
-          <ChevronRight className="w-5 h-5 text-[var(--ink-faded)]" />
+          <ChevronRight className="w-5 h-5 text-[var(--ink-faded)] group-hover:text-[var(--wood-dark)] transition-colors" />
         </button>
       </div>
     </div>
@@ -848,7 +861,7 @@ function ExamScreen({
             <div className="flex items-center gap-2">
               <Leaf className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
               <span className="font-display text-base sm:text-lg font-bold text-white hidden sm:block">
-                GreenScore
+                1600Club
               </span>
             </div>
             <div className="h-6 w-px bg-white/20 hidden sm:block" />
@@ -966,6 +979,18 @@ function ExamScreen({
               </button>
             )}
 
+            {/* Question Figure (if present) */}
+            {currentQuestion.figure && (
+              <div className="mb-4">
+                <QuestionFigure
+                  imageId={currentQuestion.figure.imageId}
+                  figureType={currentQuestion.figure.figureType}
+                  caption={currentQuestion.figure.caption}
+                  className="max-w-md mx-auto"
+                />
+              </div>
+            )}
+
             {/* Question Prompt */}
             <div className="question-card p-4 sm:p-6">
               <div className="font-body text-base sm:text-lg text-[var(--ink-black)] leading-relaxed">
@@ -1047,8 +1072,6 @@ function ExamScreen({
 // MAIN PRACTICE PAGE
 // ─────────────────────────────────────────────────────────
 
-type ScreenState = "selector" | "resume" | "confirm-full-test" | "exam" | "results";
-
 // Wrapper component to handle Suspense for useSearchParams
 export default function PracticePage() {
   return (
@@ -1072,12 +1095,31 @@ function PracticePageContent() {
   const searchParams = useSearchParams();
   const { user, isLoaded: isUserLoaded } = useUser();
 
-  const [screen, setScreen] = useState<ScreenState>("selector");
-  const [mode, setMode] = useState<ExamMode>("practice");
-  const [section, setSection] = useState<SectionId | null>(null);
-  const [attemptId, setAttemptId] = useState<Id<"examAttempts"> | null>(null);
+  // Zustand store state and actions
+  const phase = usePracticeStore((s) => s.phase);
+  const attemptId = usePracticeStore((s) => s.attemptId);
+  const mode = usePracticeStore((s) => s.mode);
+  const section = usePracticeStore((s) => s.section);
+  const pendingAttempt = usePracticeStore((s) => s.pendingAttempt);
+  const answers = usePracticeStore((s) => s.answers);
+
+  const initialize = usePracticeStore((s) => s.initialize);
+  const showSelector = usePracticeStore((s) => s.showSelector);
+  const showConfirmFullTest = usePracticeStore((s) => s.showConfirmFullTest);
+  const startSection = usePracticeStore((s) => s.startSection);
+  const startFullTest = usePracticeStore((s) => s.startFullTest);
+  const sessionCreated = usePracticeStore((s) => s.sessionCreated);
+  const resumeSession = usePracticeStore((s) => s.resumeSession);
+  const abandonAndStartFresh = usePracticeStore((s) => s.abandonAndStartFresh);
+  const completeSession = usePracticeStore((s) => s.completeSession);
+  const enterReview = usePracticeStore((s) => s.enterReview);
+  const reset = usePracticeStore((s) => s.reset);
+
+  // Derived selectors
+  const needsAttemptCheck = useNeedsAttemptCheck();
+  const screen = useScreen();
+
   const [visitorId, setVisitorId] = useState<string>("");
-  const [localAnswers, setLocalAnswers] = useState<Map<string, LocalUserAnswer>>(new Map());
   const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
@@ -1087,44 +1129,59 @@ function PracticePageContent() {
   const urlMode = searchParams.get("mode");
   const urlSection = searchParams.get("section");
 
-  // Get current in-progress attempt for resume
+  // CRITICAL: Only query when in 'idle' phase - prevents interference during active session
   const currentAttempt = useQuery(
     api.attempts.getCurrentAttempt,
-    visitorId ? { visitorId: user?.id ?? visitorId } : "skip"
+    needsAttemptCheck && visitorId ? { visitorId: user?.id ?? visitorId } : "skip"
   );
 
   const allQuestions = useQuery(api.questions.getAllQuestions);
 
   const createAttempt = useMutation(api.attempts.createAttempt);
-  const completeAttempt = useMutation(api.attempts.completeAttempt);
+  const completeAttemptMutation = useMutation(api.attempts.completeAttempt);
   const abandonAttempt = useMutation(api.attempts.abandonAttempt);
   const submitAnswers = useMutation(api.answers.submitAnswers);
 
-  // Determine initial screen based on URL params and existing attempt
+  // Initialize store once when data is ready (only in idle phase)
   useEffect(() => {
-    if (!isUserLoaded || currentAttempt === undefined) return;
+    if (phase !== "idle") return;
+    if (!isUserLoaded) return;
+    if (currentAttempt === undefined) return; // Still loading
 
-    // URL param: direct to section
+    // Handle URL params for direct navigation
+    if (urlSection === "math" || urlSection === "reading_writing") {
+      // Will start section via the handleStartSection flow
+      initialize(null);
+      return;
+    }
+
+    if (urlMode === "timed" || urlMode === "sat") {
+      initialize(null);
+      showConfirmFullTest();
+      return;
+    }
+
+    // Initialize with existing attempt (or null)
+    const pending: PendingAttempt | null = currentAttempt
+      ? {
+          id: currentAttempt._id,
+          section: currentAttempt.section ?? null,
+          mode: currentAttempt.mode as ExamMode,
+          answeredCount: currentAttempt.answeredCount,
+          startedAt: currentAttempt.startedAt,
+        }
+      : null;
+
+    initialize(pending);
+  }, [phase, isUserLoaded, currentAttempt, urlMode, urlSection, initialize, showConfirmFullTest]);
+
+  // Handle URL-based section start after initialization
+  useEffect(() => {
+    if (phase !== "selecting") return;
     if (urlSection === "math" || urlSection === "reading_writing") {
       handleStartSection(urlSection as SectionId);
-      return;
     }
-
-    // URL param: full test mode
-    if (urlMode === "timed" || urlMode === "sat") {
-      setScreen("confirm-full-test");
-      return;
-    }
-
-    // Has in-progress attempt? Show resume prompt
-    if (currentAttempt) {
-      setScreen("resume");
-      return;
-    }
-
-    // Default: show selector
-    setScreen("selector");
-  }, [isUserLoaded, currentAttempt, urlMode, urlSection]);
+  }, [phase, urlSection]);
 
   const questions = useMemo(() => {
     if (!allQuestions) return [];
@@ -1142,9 +1199,8 @@ function PracticePageContent() {
       if (isStarting) return;
       setIsStarting(true);
 
-      setMode("practice");
-      setSection(selectedSection);
-      setLocalAnswers(new Map());
+      // Immediately transition to active phase to prevent query interference
+      startSection(selectedSection);
 
       try {
         const id = await createAttempt({
@@ -1152,81 +1208,74 @@ function PracticePageContent() {
           mode: "practice",
           section: selectedSection,
         });
-        setAttemptId(id);
-        setScreen("exam");
+        sessionCreated(id, "practice", selectedSection);
       } catch (error) {
         console.error("Failed to create attempt:", error);
+        // Revert to selector on error
+        showSelector();
       } finally {
         setIsStarting(false);
       }
     },
-    [visitorId, user, createAttempt, isStarting]
+    [visitorId, user, createAttempt, isStarting, startSection, sessionCreated, showSelector]
   );
 
   const handleStartFullTest = useCallback(async () => {
     if (isStarting) return;
     setIsStarting(true);
 
-    setMode("sat");
-    setSection(null);
-    setLocalAnswers(new Map());
+    // Immediately transition to active phase
+    startFullTest();
 
     try {
       const id = await createAttempt({
         visitorId: user?.id ?? visitorId,
         mode: "sat",
       });
-      setAttemptId(id);
-      setScreen("exam");
+      sessionCreated(id, "sat", null);
     } catch (error) {
       console.error("Failed to create attempt:", error);
+      showSelector();
     } finally {
       setIsStarting(false);
     }
-  }, [visitorId, user, createAttempt, isStarting]);
+  }, [visitorId, user, createAttempt, isStarting, startFullTest, sessionCreated, showSelector]);
 
   const handleResume = useCallback(() => {
-    if (!currentAttempt) return;
-
-    setAttemptId(currentAttempt._id);
-    setMode(currentAttempt.mode as ExamMode);
-    setSection(currentAttempt.section ?? null);
-    setScreen("exam");
-  }, [currentAttempt]);
+    resumeSession();
+  }, [resumeSession]);
 
   const handleStartFresh = useCallback(async () => {
-    if (currentAttempt) {
+    if (pendingAttempt) {
       try {
-        await abandonAttempt({ attemptId: currentAttempt._id });
+        await abandonAttempt({ attemptId: pendingAttempt.id });
       } catch (error) {
         console.error("Failed to abandon attempt:", error);
       }
     }
-    setScreen("selector");
-  }, [currentAttempt, abandonAttempt]);
+    abandonAndStartFresh();
+  }, [pendingAttempt, abandonAttempt, abandonAndStartFresh]);
 
   const handleComplete = useCallback(async () => {
     if (!attemptId) return;
 
     try {
       await submitAnswers({ attemptId });
-      await completeAttempt({ attemptId });
-      setScreen("results");
+      await completeAttemptMutation({ attemptId });
+      completeSession();
     } catch (error) {
       console.error("Failed to complete attempt:", error);
-      setScreen("results");
+      completeSession();
     }
-  }, [attemptId, submitAnswers, completeAttempt]);
+  }, [attemptId, submitAnswers, completeAttemptMutation, completeSession]);
 
   const handleRestart = useCallback(() => {
-    setScreen("selector");
-    setAttemptId(null);
-    setLocalAnswers(new Map());
-  }, []);
+    reset();
+  }, [reset]);
 
   const handleReview = useCallback(() => {
-    setScreen("exam");
-  }, []);
+    enterReview();
+  }, [enterReview]);
 
   const handleHome = useCallback(() => {
     router.push("/dashboard");
@@ -1234,52 +1283,83 @@ function PracticePageContent() {
 
   const isLoading = allQuestions === undefined;
 
-  // Loading state
-  if (!isUserLoaded || currentAttempt === undefined) {
-    return (
-      <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
-        <div className="text-center">
-          <Leaf className="w-12 h-12 text-[var(--grass-dark)] mx-auto mb-4 animate-pulse" />
-          <p className="font-body text-[var(--ink-faded)]">Loading...</p>
+  // Render based on derived screen
+  switch (screen) {
+    case "loading":
+      return (
+        <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
+          <div className="text-center">
+            <Leaf className="w-12 h-12 text-[var(--grass-dark)] mx-auto mb-4 animate-pulse" />
+            <p className="font-body text-[var(--ink-faded)]">Loading...</p>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
 
-  return (
-    <>
-      {screen === "selector" && (
+    case "selector":
+      return (
         <SessionSelector
           onSelectSection={handleStartSection}
-          onSelectFullTest={() => setScreen("confirm-full-test")}
+          onSelectFullTest={showConfirmFullTest}
           onClose={handleHome}
           isLoading={isLoading || isStarting}
         />
-      )}
+      );
 
-      {screen === "resume" && currentAttempt && (
+    case "resume":
+      return pendingAttempt ? (
         <ResumePrompt
           attempt={{
-            section: currentAttempt.section,
-            mode: currentAttempt.mode,
-            answeredCount: currentAttempt.answeredCount,
-            startedAt: currentAttempt.startedAt,
+            section: pendingAttempt.section ?? undefined,
+            mode: pendingAttempt.mode,
+            answeredCount: pendingAttempt.answeredCount,
+            startedAt: pendingAttempt.startedAt,
           }}
           onContinue={handleResume}
           onStartFresh={handleStartFresh}
           onClose={handleHome}
         />
-      )}
+      ) : null;
 
-      {screen === "confirm-full-test" && (
+    case "confirm-full-test":
+      return (
         <FullTestConfirmation
           onConfirm={handleStartFullTest}
-          onCancel={() => setScreen("selector")}
+          onCancel={showSelector}
           isLoading={isStarting}
         />
-      )}
+      );
 
-      {screen === "exam" && attemptId && questions.length > 0 && (
+    case "exam":
+      if (questions.length === 0) {
+        return (
+          <div className="min-h-screen bg-[var(--paper-cream)] flex flex-col items-center justify-center gap-4 p-4">
+            <AlertCircle className="w-12 h-12 text-[var(--barn-red)]" />
+            <p className="font-body text-[var(--ink-faded)] text-center">
+              {isLoading
+                ? "Loading questions..."
+                : "No questions found. Please seed the database first."}
+            </p>
+            {!isLoading && (
+              <button onClick={handleHome} className="btn-outline-wood">
+                Go to Dashboard
+              </button>
+            )}
+          </div>
+        );
+      }
+
+      if (!attemptId || !mode) {
+        return (
+          <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
+            <div className="text-center">
+              <Leaf className="w-12 h-12 text-[var(--grass-dark)] mx-auto mb-4 animate-pulse" />
+              <p className="font-body text-[var(--ink-faded)]">Starting session...</p>
+            </div>
+          </div>
+        );
+      }
+
+      return (
         <ExamScreen
           questions={questions}
           mode={mode}
@@ -1287,33 +1367,20 @@ function PracticePageContent() {
           onExit={handleHome}
           attemptId={attemptId}
         />
-      )}
+      );
 
-      {screen === "results" && (
+    case "results":
+      return (
         <ResultsScreen
           questions={questions}
-          answers={localAnswers}
+          answers={answers}
           onRestart={handleRestart}
           onReview={handleReview}
           onHome={handleHome}
         />
-      )}
+      );
 
-      {screen === "exam" && questions.length === 0 && (
-        <div className="min-h-screen bg-[var(--paper-cream)] flex flex-col items-center justify-center gap-4 p-4">
-          <AlertCircle className="w-12 h-12 text-[var(--barn-red)]" />
-          <p className="font-body text-[var(--ink-faded)] text-center">
-            {isLoading
-              ? "Loading questions..."
-              : "No questions found. Please seed the database first."}
-          </p>
-          {!isLoading && (
-            <button onClick={handleHome} className="btn-outline-wood">
-              Go to Dashboard
-            </button>
-          )}
-        </div>
-      )}
-    </>
-  );
+    default:
+      return null;
+  }
 }

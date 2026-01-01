@@ -22,6 +22,7 @@ import {
   BookMarked,
   GraduationCap,
   ChevronDown,
+  Smartphone,
 } from "lucide-react";
 
 interface LandingPageProps {
@@ -41,7 +42,7 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
               <Leaf className="w-6 h-6 text-white" />
             </div>
             <span className="font-display text-2xl font-bold text-[var(--ink-black)]">
-              GreenScore
+              1600Club
             </span>
           </div>
 
@@ -90,19 +91,20 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
           <div className="inline-flex items-center gap-2 bg-[var(--grass-light)]/20 border border-[var(--grass-medium)]/30 rounded-full px-4 py-2 mb-8">
             <Sparkles className="w-4 h-4 text-[var(--grass-dark)]" />
             <span className="font-body text-sm text-[var(--grass-dark)] font-medium">
-              The fresh way to prep for the SAT
+              Your path to the perfect score
             </span>
           </div>
 
           {/* Main headline */}
           <h1 className="font-display text-5xl md:text-7xl font-bold text-[var(--ink-black)] leading-tight mb-6">
-            Your SAT Journey,{" "}
-            <span className="text-[var(--grass-dark)]">Naturally Guided</span>
+            Join the Club.{" "}
+            <span className="text-[var(--grass-dark)]">Get the Score.</span>
           </h1>
 
           <p className="font-body text-xl text-[var(--ink-faded)] max-w-2xl mx-auto mb-8 leading-relaxed">
-            Like a well-tended garden, your score will grow. We nurture your progress with
-            endless practice, smart recycling of weak topics, and real SAT simulations.
+            Level up your SAT prep with gamified practice, adaptive learning, and
+            unlimited questions. Study in bed, on the bus home from practice, or
+            anywhere—every session brings you closer to 1600.
           </p>
 
           {/* CTA Buttons */}
@@ -110,7 +112,7 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
             <SignedOut>
               <SignInButton mode="modal">
                 <button className="btn-grass text-lg px-8 py-4 flex items-center gap-2">
-                  <span>Start Growing Your Score</span>
+                  <span>Start Your Journey to 1600</span>
                   <ArrowRight className="w-5 h-5" />
                 </button>
               </SignInButton>
@@ -146,6 +148,10 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-[var(--grass-dark)]" />
               <span className="font-body text-sm">Real SAT Simulation</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Smartphone className="w-5 h-5 text-[var(--grass-dark)]" />
+              <span className="font-body text-sm">Study Anywhere</span>
             </div>
           </div>
         </div>
@@ -383,7 +389,7 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
                   <Leaf className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="font-display text-xl font-bold text-[var(--ink-black)]">
-                  GreenScore
+                  1600Club
                 </h3>
               </div>
               <div className="text-center mb-6">
@@ -482,13 +488,13 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
               <div className="w-14 h-14 bg-[var(--grass-light)]/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Clock className="w-7 h-7 text-[var(--grass-dark)]" />
+                <Smartphone className="w-7 h-7 text-[var(--grass-dark)]" />
               </div>
               <h4 className="font-display text-lg font-bold text-[var(--ink-black)] mb-2">
-                Practice Anytime
+                Study Anywhere
               </h4>
               <p className="font-body text-sm text-[var(--ink-faded)]">
-                24/7 access. Your schedule, your pace.
+                In bed, on the bus, between classes.
               </p>
             </div>
 
@@ -537,10 +543,10 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
       <section className="py-24 px-6 bg-[var(--paper-cream)]">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-display text-4xl md:text-5xl font-bold text-[var(--ink-black)] mb-6">
-            Ready to Grow Your Score?
+            Ready to Join the Club?
           </h2>
           <p className="font-body text-xl text-[var(--ink-faded)] mb-8">
-            Join thousands of students who chose the smarter, fresher path to SAT success.
+            Join thousands of students leveling up their SAT scores every day.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <SignedOut>
@@ -574,10 +580,10 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
               <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
                 <Leaf className="w-6 h-6 text-white" />
               </div>
-              <span className="font-display text-xl font-bold">GreenScore</span>
+              <span className="font-display text-xl font-bold">1600Club</span>
             </div>
             <p className="font-body text-white/60 text-sm">
-              © 2024 GreenScore. Nurturing success, one question at a time.
+              © 2024 1600Club. Every question brings you closer to 1600.
             </p>
           </div>
         </div>

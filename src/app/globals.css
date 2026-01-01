@@ -188,6 +188,66 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
+/* Interactive practice cards with strong affordances */
+.practice-card {
+  background: var(--paper-warm);
+  border: 2px solid var(--paper-lines);
+  box-shadow:
+    0 2px 8px rgba(44, 36, 22, 0.08),
+    0 4px 16px rgba(44, 36, 22, 0.04);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.practice-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--grass-medium);
+  box-shadow:
+    0 8px 24px rgba(44, 36, 22, 0.12),
+    0 16px 32px rgba(44, 36, 22, 0.08);
+}
+
+.practice-card:active {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 12px rgba(44, 36, 22, 0.1);
+}
+
+.practice-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.practice-card:disabled:hover {
+  transform: none;
+  box-shadow:
+    0 2px 8px rgba(44, 36, 22, 0.08),
+    0 4px 16px rgba(44, 36, 22, 0.04);
+  border-color: var(--paper-lines);
+}
+
+/* Icon animation on card hover */
+.practice-card .practice-icon {
+  transition: transform 0.2s ease;
+}
+
+.practice-card:hover .practice-icon {
+  transform: scale(1.1);
+}
+
+/* Hover-reveal chevron */
+.practice-card .practice-chevron {
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: all 0.2s ease;
+}
+
+.practice-card:hover .practice-chevron {
+  opacity: 1;
+  transform: translateX(0);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    FEATURE ICONS
    ═══════════════════════════════════════════════════════════════ */

@@ -13,6 +13,7 @@ import {
   Settings,
   Menu,
   X,
+  Flame,
 } from "lucide-react";
 
 const navItems = [
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/dashboard/progress", label: "Progress", icon: TrendingUp },
   { href: "/dashboard/history", label: "History", icon: History },
   { href: "/practice", label: "Practice", icon: BookOpen },
+  { href: "/endless", label: "Endless Mode", icon: Flame },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -82,7 +84,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <Leaf className="w-5 h-5 text-white" />
               </div>
               <span className="font-display text-xl font-bold text-white">
-                GreenScore
+                1600Club
               </span>
             </Link>
             <button
@@ -156,7 +158,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <Link href="/dashboard" className="flex items-center gap-2">
             <Leaf className="w-6 h-6 text-[var(--grass-dark)]" />
             <span className="font-display text-lg font-bold text-[var(--ink-black)]">
-              GreenScore
+              1600Club
             </span>
           </Link>
           <UserButton

@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   PlayCircle,
   Calculator,
+  Zap,
+  Trophy,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -31,6 +33,16 @@ export default function DashboardPage() {
 
   // Get current in-progress attempt for resume card
   const currentAttempt = useQuery(api.attempts.getCurrentAttempt, {
+    visitorId: user?.id ?? "",
+  });
+
+  // Get endless mode streak stats
+  const streakStats = useQuery(api.endless.getStreakStats, {
+    visitorId: user?.id ?? "",
+  });
+
+  // Get daily goal progress
+  const dailyProgress = useQuery(api.endless.getDailyGoalProgress, {
     visitorId: user?.id ?? "",
   });
 
@@ -56,7 +68,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           icon={Target}
           label="Questions Answered"
@@ -69,6 +81,13 @@ export default function DashboardPage() {
           value={stats?.correctAnswers ?? 0}
           subtext={stats?.accuracy ? `${Math.round(stats.accuracy)}% accuracy` : undefined}
           color="grass"
+        />
+        <StatCard
+          icon={Flame}
+          label="Best Streak"
+          value={streakStats?.bestStreak ?? 0}
+          subtext={streakStats?.currentStreak ? `Current: ${streakStats.currentStreak}` : undefined}
+          color="sunflower"
         />
         <StatCard
           icon={Clock}
@@ -138,6 +157,13 @@ export default function DashboardPage() {
               title="Math Section"
               description="Practice untimed"
               color="barn"
+            />
+            <QuickActionCard
+              href="/endless"
+              icon={Zap}
+              title="Endless Mode"
+              description={dailyProgress ? `${dailyProgress.questionsAnswered}/${dailyProgress.target} today` : "Adaptive practice"}
+              color="sunflower"
             />
           </div>
         </div>
@@ -225,12 +251,13 @@ function StatCard({
   label: string;
   value: string | number;
   subtext?: string;
-  color: "grass" | "wood" | "barn";
+  color: "grass" | "wood" | "barn" | "sunflower";
 }) {
   const colorClasses = {
     grass: "bg-[var(--grass-light)]/20 text-[var(--grass-dark)]",
     wood: "bg-[var(--wood-light)]/20 text-[var(--wood-dark)]",
     barn: "bg-[var(--barn-red)]/10 text-[var(--barn-red)]",
+    sunflower: "bg-[var(--sunflower)]/20 text-orange-500",
   };
 
   return (
@@ -264,18 +291,20 @@ function QuickActionCard({
   icon: React.ElementType;
   title: string;
   description: string;
-  color: "grass" | "wood" | "barn";
+  color: "grass" | "wood" | "barn" | "sunflower";
 }) {
   const colorClasses = {
     grass: "border-[var(--grass-medium)] hover:bg-[var(--grass-light)]/10",
     wood: "border-[var(--wood-medium)] hover:bg-[var(--wood-light)]/10",
     barn: "border-[var(--barn-red)]/50 hover:bg-[var(--barn-red)]/5",
+    sunflower: "border-[var(--sunflower)] hover:bg-[var(--sunflower)]/10",
   };
 
   const iconClasses = {
     grass: "text-[var(--grass-dark)]",
     wood: "text-[var(--wood-dark)]",
     barn: "text-[var(--barn-red)]",
+    sunflower: "text-orange-500",
   };
 
   return (
