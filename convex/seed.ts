@@ -1,4 +1,4 @@
-import { mutation, internalMutation } from "./_generated/server";
+import { mutation, internalMutation, action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
@@ -809,5 +809,128 @@ export const clearDatabase = mutation({
     }
 
     return { message: `Deleted ${totalDeleted} documents` };
+  },
+});
+
+// ─────────────────────────────────────────────────────────
+// TEST: GENERATE READING DATA QUESTION
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Test action to generate a single reading data question.
+ * This is a public action for testing the pipeline.
+ */
+export const testGenerateReadingDataQuestion = action({
+  args: {
+    dataType: v.union(
+      v.literal("bar_chart"),
+      v.literal("line_graph"),
+      v.literal("data_table")
+    ),
+  },
+  handler: async (ctx, args) => {
+    console.log(`Testing reading data question generation: ${args.dataType}`);
+
+    const result = await ctx.runAction(
+      internal.readingDataGeneration.generateReadingDataQuestion,
+      {
+        dataType: args.dataType,
+        batchId: "test-batch",
+      }
+    );
+
+    return result;
+  },
+});
+
+// ─────────────────────────────────────────────────────────
+// TEST: GENERATE READING QUESTION (PASSAGE-BASED)
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Test action to generate a single reading question (passage-based).
+ * This is a public action for testing the pipeline.
+ */
+export const testGenerateReadingQuestion = action({
+  args: {
+    questionType: v.optional(
+      v.union(
+        v.literal("central_ideas"),
+        v.literal("inferences"),
+        v.literal("vocabulary_in_context"),
+        v.literal("text_structure"),
+        v.literal("command_of_evidence"),
+        v.literal("rhetorical_synthesis")
+      )
+    ),
+    passageType: v.optional(
+      v.union(
+        v.literal("literary_narrative"),
+        v.literal("social_science"),
+        v.literal("natural_science"),
+        v.literal("humanities")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    console.log(`Testing reading question generation...`);
+    if (args.questionType) console.log(`  Question type: ${args.questionType}`);
+    if (args.passageType) console.log(`  Passage type: ${args.passageType}`);
+
+    const result = await ctx.runAction(
+      internal.readingQuestionGeneration.generateReadingQuestion,
+      {
+        questionType: args.questionType,
+        passageType: args.passageType,
+        batchId: "test-batch",
+      }
+    );
+
+    return result;
+  },
+});
+
+/**
+ * Batch generate reading questions (passage-based).
+ */
+export const batchGenerateReadingQuestions = action({
+  args: {
+    count: v.number(),
+    questionTypes: v.optional(
+      v.array(
+        v.union(
+          v.literal("central_ideas"),
+          v.literal("inferences"),
+          v.literal("vocabulary_in_context"),
+          v.literal("text_structure"),
+          v.literal("command_of_evidence"),
+          v.literal("rhetorical_synthesis")
+        )
+      )
+    ),
+    passageTypes: v.optional(
+      v.array(
+        v.union(
+          v.literal("literary_narrative"),
+          v.literal("social_science"),
+          v.literal("natural_science"),
+          v.literal("humanities")
+        )
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    console.log(`Batch generating ${args.count} reading questions...`);
+
+    const result = await ctx.runAction(
+      internal.readingQuestionGeneration.batchGenerateReadingQuestions,
+      {
+        count: args.count,
+        questionTypes: args.questionTypes,
+        passageTypes: args.passageTypes,
+      }
+    );
+
+    return result;
   },
 });

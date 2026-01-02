@@ -14,7 +14,11 @@ import {
   Menu,
   X,
   Flame,
+  GraduationCap,
+  CreditCard,
+  FileText,
 } from "lucide-react";
+import { SubscriptionGate } from "@/components/SubscriptionGate";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -22,7 +26,13 @@ const navItems = [
   { href: "/dashboard/history", label: "History", icon: History },
   { href: "/practice", label: "Practice", icon: BookOpen },
   { href: "/endless", label: "Endless Mode", icon: Flame },
+  { href: "/dashboard/purchases", label: "My Tests", icon: FileText },
+  { href: "/dashboard/tutoring", label: "Tutoring", icon: GraduationCap },
+  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
 ];
+
+// Pages exempt from subscription gating
+const EXEMPT_PATHS = ["/dashboard/billing"];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -172,7 +182,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto">
+          {EXEMPT_PATHS.some((path) => pathname.startsWith(path)) ? (
+            children
+          ) : (
+            <SubscriptionGate>{children}</SubscriptionGate>
+          )}
+        </main>
       </div>
     </div>
   );

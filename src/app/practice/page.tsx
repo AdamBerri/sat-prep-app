@@ -151,10 +151,20 @@ function QuestionNav({
 
 function PassageView({
   passage,
+  figure,
 }: {
   passage: { title?: string; author?: string; content: string } | null;
+  figure?: {
+    imageId: Id<"images">;
+    figureType?: "graph" | "geometric" | "data_display" | "diagram" | "table";
+    caption?: string;
+  } | null;
 }) {
-  if (!passage) {
+  const hasPassage = passage !== null;
+  const hasFigure = figure !== null && figure !== undefined;
+
+  // Nothing to show
+  if (!hasPassage && !hasFigure) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-[var(--ink-faded)] gap-4 p-8">
         <BookOpen className="w-12 h-12 opacity-30" />
@@ -163,32 +173,47 @@ function PassageView({
     );
   }
 
-  const paragraphs = passage.content.split("\n\n");
+  const paragraphs = passage?.content.split("\n\n") ?? [];
 
   return (
     <div className="p-6 sm:p-8 bg-[var(--paper-cream)] min-h-full">
-      <div>
-        {passage.title && (
-          <h3 className="font-display text-xl font-bold text-[var(--ink-black)] mb-1">
-            {passage.title}
-          </h3>
-        )}
-        {passage.author && (
-          <p className="font-body text-sm text-[var(--ink-faded)] mb-6 italic">
-            — {passage.author}
-          </p>
-        )}
-        <div className="space-y-5">
-          {paragraphs.map((para, i) => (
-            <p
-              key={i}
-              className="font-body text-[var(--ink-black)] leading-relaxed text-base"
-            >
-              {para}
-            </p>
-          ))}
+      {/* Figure Display (for data interpretation questions) */}
+      {hasFigure && (
+        <div className="mb-6">
+          <QuestionFigure
+            imageId={figure.imageId}
+            figureType={figure.figureType}
+            caption={figure.caption}
+            className="w-full"
+          />
         </div>
-      </div>
+      )}
+
+      {/* Passage Display */}
+      {hasPassage && (
+        <div>
+          {passage.title && (
+            <h3 className="font-display text-xl font-bold text-[var(--ink-black)] mb-1">
+              {passage.title}
+            </h3>
+          )}
+          {passage.author && (
+            <p className="font-body text-sm text-[var(--ink-faded)] mb-6 italic">
+              — {passage.author}
+            </p>
+          )}
+          <div className="space-y-5">
+            {paragraphs.map((para, i) => (
+              <p
+                key={i}
+                className="font-body text-[var(--ink-black)] leading-relaxed text-base"
+              >
+                {para}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -941,14 +966,17 @@ function ExamScreen({
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Passage Panel (for Reading & Writing) - Desktop */}
+        {/* Passage/Figure Panel (for Reading & Writing) - Desktop */}
         {isReadingWriting && (
           <div className="hidden lg:block w-1/2 border-r border-[var(--paper-lines)] overflow-y-auto bg-[var(--paper-cream)]">
-            <PassageView passage={currentQuestion.passage ?? null} />
+            <PassageView
+              passage={currentQuestion.passage ?? null}
+              figure={currentQuestion.figure}
+            />
           </div>
         )}
 
-        {/* Mobile Passage Overlay */}
+        {/* Mobile Passage/Figure Overlay */}
         {isReadingWriting && showPassage && (
           <div className="lg:hidden fixed inset-0 z-40 bg-[var(--paper-cream)] overflow-y-auto pt-16">
             <button
@@ -957,7 +985,10 @@ function ExamScreen({
             >
               <X className="w-5 h-5" />
             </button>
-            <PassageView passage={currentQuestion.passage ?? null} />
+            <PassageView
+              passage={currentQuestion.passage ?? null}
+              figure={currentQuestion.figure}
+            />
           </div>
         )}
 
@@ -968,19 +999,25 @@ function ExamScreen({
           } overflow-y-auto p-4 sm:p-6 lg:p-8`}
         >
           <div className="space-y-6 sm:space-y-8">
-            {/* Mobile: Show passage button for R&W */}
+            {/* Mobile: Show passage/figure button for R&W */}
             {isReadingWriting && !showPassage && (
               <button
                 onClick={() => setShowPassage(true)}
                 className="lg:hidden w-full card-paper p-4 rounded-xl flex items-center justify-center gap-2 text-[var(--grass-dark)] border-2 border-dashed border-[var(--grass-medium)]"
               >
                 <BookOpen className="w-5 h-5" />
-                <span className="font-body font-medium">View Passage</span>
+                <span className="font-body font-medium">
+                  {currentQuestion.passage && currentQuestion.figure
+                    ? "View Passage & Figure"
+                    : currentQuestion.figure
+                      ? "View Figure"
+                      : "View Passage"}
+                </span>
               </button>
             )}
 
-            {/* Question Figure (if present) */}
-            {currentQuestion.figure && (
+            {/* Question Figure (for Math questions only - R&W figures shown in left panel) */}
+            {!isReadingWriting && currentQuestion.figure && (
               <div className="mb-4">
                 <QuestionFigure
                   imageId={currentQuestion.figure.imageId}

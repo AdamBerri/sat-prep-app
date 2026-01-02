@@ -1,5 +1,6 @@
 import { mutation, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 import { computeOverallDifficulty, difficultyToLegacy } from "./questionsByDifficulty";
 
 // ─────────────────────────────────────────────────────────
@@ -88,6 +89,23 @@ export const createAgentQuestion = mutation({
     passageId: v.optional(v.id("passages")),
     tags: v.optional(v.array(v.string())),
     generationBatchId: v.optional(v.string()),
+
+    // Figure for questions with images (graphs, charts, tables)
+    figure: v.optional(
+      v.object({
+        imageId: v.id("images"),
+        figureType: v.optional(
+          v.union(
+            v.literal("graph"),
+            v.literal("geometric"),
+            v.literal("data_display"),
+            v.literal("diagram"),
+            v.literal("table")
+          )
+        ),
+        caption: v.optional(v.string()),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     // Compute overall difficulty from factors
@@ -116,6 +134,7 @@ export const createAgentQuestion = mutation({
       rwDifficulty: args.rwDifficulty,
       prompt: args.prompt,
       passageId: args.passageId,
+      figure: args.figure,
       correctAnswer: args.correctAnswer,
       source: {
         type: "agent_generated",
@@ -143,6 +162,112 @@ export const createAgentQuestion = mutation({
     });
 
     return { questionId, overallDifficulty, legacyDifficulty };
+  },
+});
+
+/**
+ * Internal mutation for creating agent questions from actions.
+ * Used by readingDataGeneration.ts and other action-based pipelines.
+ */
+export const createAgentQuestionInternal = internalMutation({
+  args: {
+    type: v.union(v.literal("multiple_choice"), v.literal("grid_in")),
+    category: v.union(v.literal("reading_writing"), v.literal("math")),
+    domain: v.string(),
+    skill: v.string(),
+    prompt: v.string(),
+    correctAnswer: v.string(),
+    options: v.array(
+      v.object({
+        key: v.string(),
+        content: v.string(),
+        order: v.number(),
+      })
+    ),
+    explanation: v.string(),
+    wrongAnswerExplanations: v.optional(
+      v.object({
+        A: v.optional(v.string()),
+        B: v.optional(v.string()),
+        C: v.optional(v.string()),
+        D: v.optional(v.string()),
+      })
+    ),
+    mathDifficulty: v.optional(mathDifficultyValidator),
+    rwDifficulty: v.optional(rwDifficultyValidator),
+    figure: v.optional(
+      v.object({
+        imageId: v.id("images"),
+        figureType: v.optional(
+          v.union(
+            v.literal("graph"),
+            v.literal("geometric"),
+            v.literal("data_display"),
+            v.literal("diagram"),
+            v.literal("table")
+          )
+        ),
+        caption: v.optional(v.string()),
+      })
+    ),
+    generationMetadata: generationMetadataValidator,
+    generationBatchId: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args): Promise<Id<"questions">> => {
+    // Compute overall difficulty from factors
+    let overallDifficulty = 0.5;
+    if (args.category === "math" && args.mathDifficulty) {
+      overallDifficulty = computeOverallDifficulty("math", args.mathDifficulty);
+    } else if (args.category === "reading_writing" && args.rwDifficulty) {
+      overallDifficulty = computeOverallDifficulty(
+        "reading_writing",
+        args.rwDifficulty
+      );
+    }
+
+    // Compute legacy difficulty (1-3)
+    const legacyDifficulty = difficultyToLegacy(overallDifficulty);
+
+    // Create question
+    const questionId = await ctx.db.insert("questions", {
+      type: args.type,
+      category: args.category,
+      domain: args.domain,
+      skill: args.skill,
+      difficulty: legacyDifficulty,
+      overallDifficulty,
+      mathDifficulty: args.mathDifficulty,
+      rwDifficulty: args.rwDifficulty,
+      prompt: args.prompt,
+      figure: args.figure,
+      correctAnswer: args.correctAnswer,
+      source: {
+        type: "agent_generated",
+        generationBatchId: args.generationBatchId,
+      },
+      generationMetadata: args.generationMetadata,
+      tags: args.tags ?? [args.domain, args.skill, "agent_generated"],
+    });
+
+    // Create answer options
+    for (const option of args.options) {
+      await ctx.db.insert("answerOptions", {
+        questionId,
+        key: option.key,
+        content: option.content,
+        order: option.order,
+      });
+    }
+
+    // Create explanation
+    await ctx.db.insert("explanations", {
+      questionId,
+      correctExplanation: args.explanation,
+      wrongAnswerExplanations: args.wrongAnswerExplanations,
+    });
+
+    return questionId;
   },
 });
 

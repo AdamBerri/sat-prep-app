@@ -23,6 +23,8 @@ import {
   GraduationCap,
   ChevronDown,
   Smartphone,
+  Video,
+  Calendar,
 } from "lucide-react";
 
 interface LandingPageProps {
@@ -47,8 +49,10 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
           </div>
 
           <div className="hidden md:flex items-center gap-8">
+            <Link href="/articles" className="font-body text-[var(--ink-faded)] hover:text-[var(--grass-dark)] transition-colors">Articles</Link>
             <a href="#features" className="font-body text-[var(--ink-faded)] hover:text-[var(--grass-dark)] transition-colors">Features</a>
             <a href="#pricing" className="font-body text-[var(--ink-faded)] hover:text-[var(--grass-dark)] transition-colors">Pricing</a>
+            <a href="#tutoring" className="font-body text-[var(--ink-faded)] hover:text-[var(--grass-dark)] transition-colors">Tutoring</a>
             <a href="#coaching" className="font-body text-[var(--ink-faded)] hover:text-[var(--grass-dark)] transition-colors">Coaching</a>
           </div>
 
@@ -393,8 +397,8 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
                 </h3>
               </div>
               <div className="text-center mb-6">
-                <span className="font-display text-4xl font-bold text-[var(--grass-dark)]">$240</span>
-                <p className="font-body text-sm text-[var(--ink-faded)]">for 3 months ($80/mo)</p>
+                <span className="font-display text-4xl font-bold text-[var(--grass-dark)]">$199</span>
+                <p className="font-body text-sm text-[var(--ink-faded)]">for 3 months ($66/mo)</p>
               </div>
               <ul className="space-y-3 text-[var(--ink-black)] font-body text-sm">
                 <li className="flex items-start gap-2">
@@ -418,18 +422,9 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
                   <span>Practice 24/7, your schedule</span>
                 </li>
               </ul>
-              <SignedOut>
-                <SignInButton mode="modal">
-                  <button className="btn-grass w-full mt-6">
-                    Get Started
-                  </button>
-                </SignInButton>
-              </SignedOut>
-              <SignedIn>
-                <Link href="/practice" className="btn-grass w-full mt-6 block text-center">
-                  Get Started
-                </Link>
-              </SignedIn>
+              <Link href="/pricing" className="btn-grass w-full mt-6 block text-center">
+                View Plans
+              </Link>
             </div>
 
             {/* Competitor 2: Books */}
@@ -470,12 +465,16 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
           {/* Bottom CTA */}
           <div className="text-center">
             <p className="font-body text-[var(--ink-faded)] mb-6">
-              <span className="font-semibold text-[var(--grass-dark)]">$240 for 3 months</span> vs.
+              <span className="font-semibold text-[var(--grass-dark)]">$199 for 3 months</span> vs.
               <span className="line-through ml-2">$2,000+ for tutoring</span>
             </p>
-            <p className="font-display text-2xl text-[var(--ink-black)] mb-8">
+            <p className="font-display text-2xl text-[var(--ink-black)] mb-4">
               Same results. 10x less cost. Your pace.
             </p>
+            <Link href="/pricing" className="btn-grass inline-flex items-center gap-2">
+              See All Plans
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </section>
@@ -538,9 +537,116 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
+          TUTORING SECTION
+          ═══════════════════════════════════════════════════════════════ */}
+      <section id="tutoring" className="py-24 px-6 bg-[var(--paper-cream)]">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-[var(--grass-light)]/20 border border-[var(--grass-medium)]/30 rounded-full px-4 py-2 mb-6">
+              <Video className="w-4 h-4 text-[var(--grass-dark)]" />
+              <span className="font-body text-sm text-[var(--grass-dark)] font-medium">
+                1-on-1 Sessions Available
+              </span>
+            </div>
+            <h2 className="font-display text-4xl md:text-5xl font-bold text-[var(--ink-black)] mb-4">
+              Need Extra Help?
+            </h2>
+            <p className="font-body text-lg text-[var(--ink-faded)] max-w-2xl mx-auto">
+              While our platform is designed for self-study, sometimes you need personalized guidance.
+              Book a 1-on-1 session with an expert SAT tutor.
+            </p>
+          </div>
+
+          <div className="max-w-2xl mx-auto">
+            <div className="card-paper p-8 rounded-2xl border-2 border-[var(--grass-medium)]/30 relative overflow-hidden">
+              {/* Decorative background */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[var(--grass-light)]/20 to-transparent rounded-bl-full" />
+
+              <div className="relative">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-[var(--grass-light)] to-[var(--grass-dark)] rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <GraduationCap className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-2xl font-bold text-[var(--ink-black)] mb-1">
+                      1-on-1 SAT Tutoring
+                    </h3>
+                    <p className="font-body text-[var(--ink-faded)]">
+                      90-minute personalized Zoom sessions
+                    </p>
+                  </div>
+                  <div className="md:ml-auto text-left md:text-right">
+                    <span className="font-display text-3xl font-bold text-[var(--grass-dark)]">$300</span>
+                    <p className="font-body text-sm text-[var(--ink-faded)]">per session</p>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[var(--grass-light)]/30 rounded-lg flex items-center justify-center">
+                      <Video className="w-5 h-5 text-[var(--grass-dark)]" />
+                    </div>
+                    <div>
+                      <p className="font-body font-medium text-[var(--ink-black)]">Live on Zoom</p>
+                      <p className="font-body text-sm text-[var(--ink-faded)]">Face-to-face guidance</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[var(--grass-light)]/30 rounded-lg flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-[var(--grass-dark)]" />
+                    </div>
+                    <div>
+                      <p className="font-body font-medium text-[var(--ink-black)]">90 Minutes</p>
+                      <p className="font-body text-sm text-[var(--ink-faded)]">Deep dive into your needs</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[var(--grass-light)]/30 rounded-lg flex items-center justify-center">
+                      <Target className="w-5 h-5 text-[var(--grass-dark)]" />
+                    </div>
+                    <div>
+                      <p className="font-body font-medium text-[var(--ink-black)]">Personalized</p>
+                      <p className="font-body text-sm text-[var(--ink-faded)]">Focus on your weak areas</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[var(--grass-light)]/30 rounded-lg flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-[var(--grass-dark)]" />
+                    </div>
+                    <div>
+                      <p className="font-body font-medium text-[var(--ink-black)]">Flexible Scheduling</p>
+                      <p className="font-body text-sm text-[var(--ink-faded)]">Book times that work for you</p>
+                    </div>
+                  </div>
+                </div>
+
+                <SignedOut>
+                  <SignInButton mode="modal">
+                    <button className="btn-grass w-full py-4 text-lg flex items-center justify-center gap-2">
+                      <Calendar className="w-5 h-5" />
+                      <span>Sign In to Book a Session</span>
+                    </button>
+                  </SignInButton>
+                </SignedOut>
+                <SignedIn>
+                  <Link
+                    href="/dashboard/tutoring"
+                    className="btn-grass w-full py-4 text-lg flex items-center justify-center gap-2"
+                  >
+                    <Calendar className="w-5 h-5" />
+                    <span>Book a Session</span>
+                  </Link>
+                </SignedIn>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════
           FINAL CTA
           ═══════════════════════════════════════════════════════════════ */}
-      <section className="py-24 px-6 bg-[var(--paper-cream)]">
+      <section className="py-24 px-6 bg-[var(--paper-warm)]">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-display text-4xl md:text-5xl font-bold text-[var(--ink-black)] mb-6">
             Ready to Join the Club?

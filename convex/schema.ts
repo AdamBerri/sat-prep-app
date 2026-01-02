@@ -13,11 +13,13 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     targetScore: v.optional(v.number()),
     testDate: v.optional(v.number()),
+    stripeCustomerId: v.optional(v.string()), // Link to Stripe customer
     createdAt: v.number(),
     lastActiveAt: v.number(),
   })
     .index("by_external_id", ["externalId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_stripe_customer_id", ["stripeCustomerId"]),
 
   // ─────────────────────────────────────────────────────────
   // IMAGES
@@ -41,7 +43,41 @@ export default defineSchema({
     author: v.optional(v.string()),
     source: v.optional(v.string()),
     content: v.string(),
-  }),
+    // NEW: For agent-generated passages
+    passageType: v.optional(
+      v.union(
+        v.literal("literary_narrative"),
+        v.literal("social_science"),
+        v.literal("natural_science"),
+        v.literal("humanities")
+      )
+    ),
+    complexity: v.optional(v.number()), // 0.0-1.0
+    analyzedFeatures: v.optional(
+      v.object({
+        paragraphPurposes: v.array(v.string()),
+        testableVocabulary: v.array(
+          v.object({
+            word: v.string(),
+            contextualMeaning: v.string(),
+          })
+        ),
+        keyInferences: v.array(v.string()),
+        mainIdea: v.optional(v.string()),
+        authorPurpose: v.optional(v.string()),
+      })
+    ),
+    // NEW: Track official vs generated
+    generationType: v.optional(
+      v.union(
+        v.literal("official"),
+        v.literal("agent_generated"),
+        v.literal("curated"),
+        v.literal("seeded")
+      )
+    ),
+    usedInQuestionCount: v.optional(v.number()),
+  }).index("by_passage_type", ["passageType"]),
 
   passageFigures: defineTable({
     passageId: v.id("passages"),
@@ -569,6 +605,191 @@ export default defineSchema({
     .index("by_last_attempt", ["lastAttemptAt"]),
 
   // ─────────────────────────────────────────────────────────
+  // READING DATA DLQ (Dead Letter Queue for reading data question failures)
+  // ─────────────────────────────────────────────────────────
+  readingDataDLQ: defineTable({
+    // Data type
+    dataType: v.union(
+      v.literal("bar_chart"),
+      v.literal("line_graph"),
+      v.literal("data_table")
+    ),
+    // Sampled parameters
+    sampledParams: v.object({
+      claimType: v.string(),
+      claimStrength: v.number(),
+      targetDataPoint: v.string(),
+      questionPosition: v.string(),
+      distractorStrategies: v.array(v.string()),
+      domain: v.string(),
+    }),
+    // Generated data (if Stage 1 succeeded)
+    chartData: v.optional(v.any()),
+    // Batch info
+    batchId: v.optional(v.string()),
+    // Error info
+    error: v.string(),
+    errorStage: v.union(
+      v.literal("data_generation"),
+      v.literal("image_generation"),
+      v.literal("question_generation"),
+      v.literal("storage")
+    ),
+    // Retry tracking
+    retryCount: v.number(),
+    maxRetries: v.number(),
+    lastAttemptAt: v.number(),
+    // Status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("retrying"),
+      v.literal("succeeded"),
+      v.literal("failed_permanently")
+    ),
+    // Result (if retry succeeded)
+    imageId: v.optional(v.id("images")),
+    questionId: v.optional(v.id("questions")),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_batch_id", ["batchId"]),
+
+  // ─────────────────────────────────────────────────────────
+  // READING QUESTION DLQ (Dead Letter Queue for reading question failures)
+  // ─────────────────────────────────────────────────────────
+  readingQuestionDLQ: defineTable({
+    // Question type
+    questionType: v.union(
+      v.literal("central_ideas"),
+      v.literal("inferences"),
+      v.literal("vocabulary_in_context"),
+      v.literal("text_structure"),
+      v.literal("command_of_evidence"),
+      v.literal("rhetorical_synthesis")
+    ),
+    // Passage type
+    passageType: v.union(
+      v.literal("literary_narrative"),
+      v.literal("social_science"),
+      v.literal("natural_science"),
+      v.literal("humanities")
+    ),
+    // Sampled parameters
+    sampledParams: v.object({
+      questionType: v.string(),
+      questionFocus: v.string(),
+      passageType: v.string(),
+      passageLength: v.string(),
+      passageComplexity: v.number(),
+      inferenceDepth: v.number(),
+      vocabularyLevel: v.number(),
+      evidenceEvaluation: v.number(),
+      synthesisRequired: v.number(),
+      distractorStrategies: v.array(v.string()),
+      targetOverallDifficulty: v.number(),
+    }),
+    // Generated passage data (if Stage 1 succeeded)
+    passageData: v.optional(
+      v.object({
+        passage: v.string(),
+        title: v.optional(v.union(v.string(), v.null())),
+        author: v.string(),
+        mainIdea: v.string(),
+      })
+    ),
+    // Batch info
+    batchId: v.optional(v.string()),
+    // Error info
+    error: v.string(),
+    errorStage: v.union(
+      v.literal("passage_generation"),
+      v.literal("question_generation"),
+      v.literal("storage")
+    ),
+    // Retry tracking
+    retryCount: v.number(),
+    maxRetries: v.number(),
+    lastAttemptAt: v.number(),
+    // Status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("retrying"),
+      v.literal("succeeded"),
+      v.literal("failed_permanently")
+    ),
+    // Result (if retry succeeded)
+    passageId: v.optional(v.id("passages")),
+    questionId: v.optional(v.id("questions")),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_batch_id", ["batchId"]),
+
+  // ─────────────────────────────────────────────────────────
+  // GAMIFICATION - USER ACHIEVEMENTS
+  // ─────────────────────────────────────────────────────────
+  userAchievements: defineTable({
+    visitorId: v.string(),
+    achievementId: v.string(), // e.g., "streak_5", "questions_100"
+    category: v.union(
+      v.literal("streak"),
+      v.literal("questions"),
+      v.literal("accuracy"),
+      v.literal("domain_mastery"),
+      v.literal("daily_challenge"),
+      v.literal("special")
+    ),
+    unlockedAt: v.number(),
+  })
+    .index("by_visitor", ["visitorId"])
+    .index("by_visitor_and_achievement", ["visitorId", "achievementId"]),
+
+  // ─────────────────────────────────────────────────────────
+  // GAMIFICATION - DAILY CHALLENGES
+  // ─────────────────────────────────────────────────────────
+  dailyChallenges: defineTable({
+    visitorId: v.string(),
+    date: v.string(), // YYYY-MM-DD format
+    challenges: v.array(
+      v.object({
+        id: v.string(), // e.g., "streak_5_in_session"
+        type: v.union(
+          v.literal("streak"),
+          v.literal("questions"),
+          v.literal("hard_questions"),
+          v.literal("domain_variety"),
+          v.literal("accuracy"),
+          v.literal("speed")
+        ),
+        description: v.string(),
+        target: v.number(),
+        current: v.number(),
+        completed: v.boolean(),
+        reward: v.object({
+          type: v.union(v.literal("points"), v.literal("badge")),
+          value: v.union(v.number(), v.string()),
+        }),
+      })
+    ),
+    allCompleted: v.boolean(),
+    bonusClaimed: v.boolean(),
+  })
+    .index("by_visitor", ["visitorId"])
+    .index("by_visitor_and_date", ["visitorId", "date"]),
+
+  // ─────────────────────────────────────────────────────────
+  // GAMIFICATION - USER SETTINGS
+  // ─────────────────────────────────────────────────────────
+  userGamificationSettings: defineTable({
+    visitorId: v.string(),
+    soundEnabled: v.boolean(),
+    soundVolume: v.number(), // 0.0 - 1.0
+    confettiEnabled: v.boolean(),
+  }).index("by_visitor", ["visitorId"]),
+
+  // ─────────────────────────────────────────────────────────
   // DIFFICULTY CALIBRATION (learns actual difficulty from user performance)
   // ─────────────────────────────────────────────────────────
   difficultyCalibration: defineTable({
@@ -600,4 +821,174 @@ export default defineSchema({
     .index("by_question", ["questionId"])
     .index("by_category", ["category"])
     .index("by_sample_size", ["sampleSize"]),
+
+  // ─────────────────────────────────────────────────────────
+  // TUTORING SYSTEM
+  // ─────────────────────────────────────────────────────────
+
+  // Tutors table (supports future multi-tutor)
+  tutors: defineTable({
+    userId: v.optional(v.string()), // Links to Clerk user ID if tutor uses the platform
+    name: v.string(),
+    email: v.string(),
+    bio: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+    sessionPrice: v.number(), // In cents ($300 = 30000)
+    sessionDurationMinutes: v.number(), // 90 for 1.5 hours
+    zoomPersonalMeetingUrl: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_user_id", ["userId"])
+    .index("by_active", ["isActive"]),
+
+  // Specific bookable time slots
+  tutoringSlots: defineTable({
+    tutorId: v.id("tutors"),
+    startTime: v.number(), // Unix timestamp
+    endTime: v.number(), // Unix timestamp
+    status: v.union(
+      v.literal("available"),
+      v.literal("pending"), // Payment in progress
+      v.literal("booked"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    ),
+    pendingExpiry: v.optional(v.number()), // When pending slot becomes available again
+  })
+    .index("by_tutor", ["tutorId"])
+    .index("by_tutor_and_status", ["tutorId", "status"])
+    .index("by_start_time", ["startTime"])
+    .index("by_tutor_and_start", ["tutorId", "startTime"])
+    .index("by_status", ["status"]),
+
+  // Bookings (the actual reservation)
+  tutoringBookings: defineTable({
+    slotId: v.id("tutoringSlots"),
+    tutorId: v.id("tutors"),
+    studentId: v.string(), // Clerk user ID
+    studentEmail: v.string(),
+    studentName: v.optional(v.string()),
+    // Payment
+    stripeCheckoutSessionId: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
+    amountPaid: v.number(), // In cents
+    paymentStatus: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("refunded")
+    ),
+    // Session details
+    zoomLink: v.optional(v.string()),
+    notes: v.optional(v.string()), // Student's notes/goals for session
+    // Status
+    status: v.union(
+      v.literal("pending_payment"),
+      v.literal("confirmed"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+      v.literal("no_show")
+    ),
+    // Timestamps
+    createdAt: v.number(),
+    confirmedAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
+  })
+    .index("by_student", ["studentId"])
+    .index("by_tutor", ["tutorId"])
+    .index("by_slot", ["slotId"])
+    .index("by_stripe_session", ["stripeCheckoutSessionId"])
+    .index("by_status", ["status"])
+    .index("by_student_and_status", ["studentId", "status"]),
+
+  // ─────────────────────────────────────────────────────────
+  // SUBSCRIPTIONS
+  // ─────────────────────────────────────────────────────────
+  subscriptions: defineTable({
+    userId: v.string(), // Clerk user ID
+    stripeCustomerId: v.string(),
+    stripeSubscriptionId: v.string(),
+    stripePriceId: v.string(),
+    plan: v.union(
+      v.literal("monthly"),
+      v.literal("three_month"),
+      v.literal("annual")
+    ),
+    status: v.union(
+      v.literal("active"),
+      v.literal("past_due"),
+      v.literal("canceled"),
+      v.literal("incomplete"),
+      v.literal("incomplete_expired"),
+      v.literal("trialing"),
+      v.literal("unpaid"),
+      v.literal("paused")
+    ),
+    currentPeriodStart: v.number(), // Unix timestamp (ms)
+    currentPeriodEnd: v.number(), // Unix timestamp (ms)
+    cancelAtPeriodEnd: v.boolean(), // True if user canceled but still has access
+    trialStart: v.optional(v.number()),
+    trialEnd: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_stripe_subscription_id", ["stripeSubscriptionId"])
+    .index("by_stripe_customer_id", ["stripeCustomerId"])
+    .index("by_status", ["status"]),
+
+  // ─────────────────────────────────────────────────────────
+  // PDF TEST PRODUCTS
+  // ─────────────────────────────────────────────────────────
+  pdfTests: defineTable({
+    name: v.string(), // "Full-Length Practice Test #1"
+    description: v.string(),
+    testNumber: v.number(), // 1, 2, 3... for ordering
+    // PDF file storage
+    pdfStorageId: v.id("_storage"), // Test PDF
+    answerKeyStorageId: v.id("_storage"), // Answer key PDF
+    // Metadata
+    questionCount: v.number(), // 98 for full SAT
+    difficulty: v.union(
+      v.literal("easy"),
+      v.literal("medium"),
+      v.literal("hard"),
+      v.literal("mixed")
+    ),
+    previewImageStorageId: v.optional(v.id("_storage")), // Cover/preview image
+    isActive: v.boolean(), // Can be purchased
+    createdAt: v.number(),
+  })
+    .index("by_test_number", ["testNumber"])
+    .index("by_active", ["isActive"]),
+
+  // ─────────────────────────────────────────────────────────
+  // PDF PURCHASES
+  // ─────────────────────────────────────────────────────────
+  pdfPurchases: defineTable({
+    userId: v.string(), // Clerk user ID
+    // What they bought
+    purchaseType: v.union(v.literal("single"), v.literal("bundle")),
+    testIds: v.array(v.id("pdfTests")), // Which test(s) they have access to
+    // Payment
+    amountPaid: v.number(), // In cents
+    stripeCheckoutSessionId: v.string(),
+    stripePaymentIntentId: v.optional(v.string()),
+    paymentStatus: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("refunded")
+    ),
+    // Tracking
+    downloadCount: v.number(),
+    lastDownloadedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_stripe_session", ["stripeCheckoutSessionId"])
+    .index("by_status", ["paymentStatus"]),
 });

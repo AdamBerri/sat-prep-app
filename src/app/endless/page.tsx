@@ -9,6 +9,11 @@ import { MathText } from "@/components/MathText";
 import { QuestionFigure } from "@/components/QuestionFigure";
 import { getVisitorId } from "@/lib/visitor";
 import { formatDomain } from "@/lib/constants";
+import { GamificationProvider, useGamification } from "@/context/GamificationContext";
+import { DailyChallenges } from "@/components/gamification/DailyChallenges";
+import { SettingsPanel, SettingsButton } from "@/components/gamification/SettingsPanel";
+import { AchievementModal } from "@/components/gamification/AchievementModal";
+import { getStreakMilestone } from "@/lib/achievements";
 import {
   Flame,
   Target,
@@ -22,8 +27,8 @@ import {
   Trophy,
   Calculator,
   Leaf,
-  Settings,
   TrendingUp,
+  Award,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────
@@ -101,11 +106,13 @@ function MasteryBadge({ level, points }: { level: MasteryLevel; points: number }
 // ─────────────────────────────────────────────────────────
 
 function StreakDisplay({ current, best, animate }: { current: number; best: number; animate: boolean }) {
+  const isMilestone = getStreakMilestone(current) !== null;
+
   return (
     <div className="flex items-center gap-4">
-      <div className={`flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--sunflower)]/20 border border-[var(--sunflower)]/30 ${animate ? 'animate-pulse' : ''}`}>
-        <Flame className={`w-5 h-5 ${current > 0 ? 'text-orange-500' : 'text-gray-400'}`} />
-        <span className="font-display text-xl font-bold text-[var(--ink-black)]">{current}</span>
+      <div className={`flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--sunflower)]/20 border border-[var(--sunflower)]/30 ${animate ? 'celebration-pulse' : ''}`}>
+        <Flame className={`w-5 h-5 ${current > 0 ? 'text-orange-500' : 'text-gray-400'} ${isMilestone ? 'streak-fire' : ''}`} />
+        <span className={`font-display text-xl font-bold text-[var(--ink-black)] ${animate ? 'score-animate' : ''}`}>{current}</span>
       </div>
       {best > 0 && (
         <div className="flex items-center gap-1.5 text-sm text-[var(--ink-faded)]">
@@ -184,10 +191,20 @@ function DailyGoalWidget({
 
 function PassageView({
   passage,
+  figure,
 }: {
   passage: { title?: string; author?: string; content: string } | null;
+  figure?: {
+    imageId: Id<"images">;
+    figureType?: "graph" | "geometric" | "data_display" | "diagram" | "table";
+    caption?: string;
+  } | null;
 }) {
-  if (!passage) {
+  const hasPassage = passage !== null;
+  const hasFigure = figure !== null && figure !== undefined;
+
+  // Nothing to show
+  if (!hasPassage && !hasFigure) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-[var(--ink-faded)] gap-4 p-8">
         <BookOpen className="w-12 h-12 opacity-30" />
@@ -196,32 +213,47 @@ function PassageView({
     );
   }
 
-  const paragraphs = passage.content.split("\n\n");
+  const paragraphs = passage?.content.split("\n\n") ?? [];
 
   return (
     <div className="p-6 sm:p-8 bg-[var(--paper-cream)] min-h-full">
-      <div>
-        {passage.title && (
-          <h3 className="font-display text-xl font-bold text-[var(--ink-black)] mb-1">
-            {passage.title}
-          </h3>
-        )}
-        {passage.author && (
-          <p className="font-body text-sm text-[var(--ink-faded)] mb-6 italic">
-            — {passage.author}
-          </p>
-        )}
-        <div className="space-y-5">
-          {paragraphs.map((para, i) => (
-            <p
-              key={i}
-              className="font-body text-[var(--ink-black)] leading-relaxed text-base"
-            >
-              {para}
-            </p>
-          ))}
+      {/* Figure Display (for data interpretation questions) */}
+      {hasFigure && (
+        <div className="mb-6">
+          <QuestionFigure
+            imageId={figure.imageId}
+            figureType={figure.figureType}
+            caption={figure.caption}
+            className="w-full"
+          />
         </div>
-      </div>
+      )}
+
+      {/* Passage Display */}
+      {hasPassage && (
+        <div>
+          {passage.title && (
+            <h3 className="font-display text-xl font-bold text-[var(--ink-black)] mb-1">
+              {passage.title}
+            </h3>
+          )}
+          {passage.author && (
+            <p className="font-body text-sm text-[var(--ink-faded)] mb-6 italic">
+              — {passage.author}
+            </p>
+          )}
+          <div className="space-y-5">
+            {paragraphs.map((para, i) => (
+              <p
+                key={i}
+                className="font-body text-[var(--ink-black)] leading-relaxed text-base"
+              >
+                {para}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -618,6 +650,18 @@ function PlayingScreen({
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [streakAnimate, setStreakAnimate] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
+  const [domainsThisSession, setDomainsThisSession] = useState<Set<string>>(new Set());
+
+  // Gamification context
+  const {
+    celebrateCorrectAnswer,
+    celebrateWrongAnswer,
+    checkAchievements,
+    updateChallenges,
+    unlockedAchievementIds,
+  } = useGamification();
 
   // Real-time queries
   const sessionState = useQuery(api.endless.getEndlessSessionState, { attemptId });
@@ -652,11 +696,60 @@ function PlayingScreen({
       visitorId,
     });
 
+    // Track domain for daily challenges
+    const newDomains = new Set(domainsThisSession);
+    newDomains.add(currentQuestion.question.domain);
+    setDomainsThisSession(newDomains);
+
     // Show streak animation if streak increased
     if (result.isCorrect && result.currentStreak > 1) {
       setStreakAnimate(true);
       setTimeout(() => setStreakAnimate(false), 500);
     }
+
+    // Trigger celebrations
+    const isLevelUp = currentQuestion.mastery && result.masteryLevel !== currentQuestion.mastery.level;
+    if (result.isCorrect) {
+      celebrateCorrectAnswer(result.currentStreak, isLevelUp);
+    } else {
+      celebrateWrongAnswer();
+    }
+
+    // Update daily challenges
+    const challengeUpdates: Array<{
+      type: "streak" | "questions" | "hard_questions" | "domain_variety" | "accuracy" | "speed";
+      value: number;
+      isAbsolute?: boolean;
+    }> = [
+      { type: "questions", value: 1 },
+      { type: "streak", value: result.currentStreak },
+      { type: "domain_variety", value: newDomains.size, isAbsolute: true },
+    ];
+
+    // Check for hard questions (difficulty >= 3)
+    if (result.isCorrect && currentQuestion.question.difficulty >= 3) {
+      challengeUpdates.push({ type: "hard_questions", value: 1 });
+    }
+
+    // Check for speed (answered in under 2 minutes)
+    if (timeSpentMs < 120000) {
+      challengeUpdates.push({ type: "speed", value: 1 });
+    }
+
+    updateChallenges(challengeUpdates);
+
+    // Check for achievements
+    checkAchievements({
+      currentStreak: result.currentStreak,
+      totalQuestions: sessionState?.questionsAnswered ? sessionState.questionsAnswered + 1 : 1,
+      sessionQuestions: sessionState?.questionsAnswered ? sessionState.questionsAnswered + 1 : 1,
+      sessionCorrect: result.isCorrect
+        ? (sessionState?.correctAnswers ?? 0) + 1
+        : sessionState?.correctAnswers ?? 0,
+      masteryLevel: result.masteryLevel,
+      domain: currentQuestion.question.domain,
+      category: currentQuestion.question.category,
+    });
 
     setFeedback({
       isCorrect: result.isCorrect,
@@ -666,7 +759,20 @@ function PlayingScreen({
       pointChange: result.pointChange,
       masteryLevel: result.masteryLevel as MasteryLevel,
     });
-  }, [selectedAnswer, currentQuestion, attemptId, visitorId, questionStartTime, submitAnswer]);
+  }, [
+    selectedAnswer,
+    currentQuestion,
+    attemptId,
+    visitorId,
+    questionStartTime,
+    submitAnswer,
+    domainsThisSession,
+    sessionState,
+    celebrateCorrectAnswer,
+    celebrateWrongAnswer,
+    updateChallenges,
+    checkAchievements,
+  ]);
 
   const handleNextQuestion = useCallback(() => {
     setFeedback(null);
@@ -688,34 +794,74 @@ function PlayingScreen({
     <div className="min-h-screen bg-[var(--paper-cream)] flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-[var(--paper-lines)]">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <StreakDisplay
             current={sessionState.currentStreak}
             best={sessionState.bestStreak}
             animate={streakAnimate}
           />
 
-          <DailyGoalWidget
-            current={dailyProgress.questionsAnswered}
-            target={dailyProgress.target}
-            goalMet={dailyProgress.goalMet}
-          />
+          {/* Center section - Daily Goal + Challenges */}
+          <div className="hidden sm:flex items-center gap-4">
+            <DailyGoalWidget
+              current={dailyProgress.questionsAnswered}
+              target={dailyProgress.target}
+              goalMet={dailyProgress.goalMet}
+            />
+            <div className="w-48">
+              <DailyChallenges visitorId={visitorId} compact />
+            </div>
+          </div>
 
-          <button
-            onClick={onEnd}
-            className="p-2 rounded-lg hover:bg-[var(--paper-aged)] text-[var(--ink-faded)] transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {/* Mobile daily goal only */}
+          <div className="sm:hidden">
+            <DailyGoalWidget
+              current={dailyProgress.questionsAnswered}
+              target={dailyProgress.target}
+              goalMet={dailyProgress.goalMet}
+            />
+          </div>
+
+          {/* Right section - Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAchievements(true)}
+              className="p-2 rounded-lg hover:bg-[var(--paper-aged)] text-[var(--ink-faded)] transition-colors"
+              title="View Achievements"
+            >
+              <Award className="w-5 h-5" />
+            </button>
+            <SettingsButton onClick={() => setShowSettings(true)} />
+            <button
+              onClick={onEnd}
+              className="p-2 rounded-lg hover:bg-[var(--paper-aged)] text-[var(--ink-faded)] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
 
+      {/* Settings Panel */}
+      <SettingsPanel
+        visitorId={visitorId}
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
+
+      {/* Achievements Modal */}
+      <AchievementModal
+        isOpen={showAchievements}
+        onClose={() => setShowAchievements(false)}
+        unlockedIds={unlockedAchievementIds}
+      />
+
       {/* Main content */}
       <div className="flex-1 flex flex-col lg:flex-row">
-        {/* Passage panel (desktop) */}
+        {/* Passage/Figure panel (desktop) */}
         {isReadingWriting && (
           <div className="hidden lg:block lg:w-1/2 border-r border-[var(--paper-lines)] overflow-y-auto">
-            <PassageView passage={passage} />
+            <PassageView passage={passage} figure={question.figure} />
           </div>
         )}
 
@@ -742,36 +888,44 @@ function PlayingScreen({
               )}
             </div>
 
-            {/* Mobile passage toggle */}
+            {/* Mobile passage/figure toggle */}
             {isReadingWriting && (
               <button
                 onClick={() => setShowPassage(!showPassage)}
                 className="lg:hidden w-full py-3 px-4 bg-white rounded-xl border border-[var(--paper-lines)] flex items-center justify-center gap-2 text-[var(--ink-faded)] hover:bg-[var(--paper-aged)] transition-colors"
               >
                 <BookOpen className="w-4 h-4" />
-                {showPassage ? 'Hide Passage' : 'View Passage'}
+                {showPassage
+                  ? 'Hide'
+                  : passage && question.figure
+                    ? 'View Passage & Figure'
+                    : question.figure
+                      ? 'View Figure'
+                      : 'View Passage'}
               </button>
             )}
 
-            {/* Mobile passage modal */}
+            {/* Mobile passage/figure modal */}
             {isReadingWriting && showPassage && (
               <div className="lg:hidden fixed inset-0 z-50 bg-black/50 flex items-end">
                 <div className="w-full max-h-[80vh] bg-white rounded-t-2xl overflow-hidden">
                   <div className="sticky top-0 bg-white border-b border-[var(--paper-lines)] p-4 flex items-center justify-between">
-                    <h3 className="font-display font-bold">Passage</h3>
+                    <h3 className="font-display font-bold">
+                      {passage && question.figure ? 'Passage & Figure' : question.figure ? 'Figure' : 'Passage'}
+                    </h3>
                     <button onClick={() => setShowPassage(false)}>
                       <X className="w-5 h-5" />
                     </button>
                   </div>
                   <div className="overflow-y-auto max-h-[calc(80vh-60px)]">
-                    <PassageView passage={passage} />
+                    <PassageView passage={passage} figure={question.figure} />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Question Figure (if present) */}
-            {question.figure && (
+            {/* Question Figure (for Math questions only - R&W figures shown in left panel) */}
+            {!isReadingWriting && question.figure && (
               <div className="mb-4">
                 <QuestionFigure
                   imageId={question.figure.imageId}
@@ -1018,11 +1172,13 @@ function EndlessPageContent() {
     case "playing":
       if (!attemptId) return null;
       return (
-        <PlayingScreen
-          attemptId={attemptId}
-          visitorId={visitorId}
-          onEnd={handleEndSession}
-        />
+        <GamificationProvider visitorId={visitorId}>
+          <PlayingScreen
+            attemptId={attemptId}
+            visitorId={visitorId}
+            onEnd={handleEndSession}
+          />
+        </GamificationProvider>
       );
 
     case "summary":
