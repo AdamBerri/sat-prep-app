@@ -828,7 +828,7 @@ export const testGenerateReadingDataQuestion = action({
       v.literal("data_table")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<unknown> => {
     console.log(`Testing reading data question generation: ${args.dataType}`);
 
     const result = await ctx.runAction(
@@ -872,7 +872,7 @@ export const testGenerateReadingQuestion = action({
       )
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<unknown> => {
     console.log(`Testing reading question generation...`);
     if (args.questionType) console.log(`  Question type: ${args.questionType}`);
     if (args.passageType) console.log(`  Passage type: ${args.passageType}`);
@@ -919,7 +919,7 @@ export const batchGenerateReadingQuestions = action({
       )
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<unknown> => {
     console.log(`Batch generating ${args.count} reading questions...`);
 
     const result = await ctx.runAction(
@@ -932,5 +932,51 @@ export const batchGenerateReadingQuestions = action({
     );
 
     return result;
+  },
+});
+
+// ─────────────────────────────────────────────────────────
+// PDF IMPORT ACTIONS
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Import official questions from a local PDF file.
+ */
+export const importOfficialPdf = action({
+  args: {
+    pdfPath: v.string(),
+    answerKeyPath: v.optional(v.string()),
+    pdfName: v.string(),
+    testNumber: v.optional(v.number()),
+    year: v.optional(v.number()),
+    category: v.union(v.literal("reading_writing"), v.literal("math")),
+  },
+  handler: async (ctx, args): Promise<unknown> => {
+    console.log(`Importing official questions from PDF: ${args.pdfPath}`);
+
+    const result = await ctx.runAction(internal.pdfImport.importFromLocalPdf, {
+      pdfPath: args.pdfPath,
+      answerKeyPath: args.answerKeyPath,
+      pdfName: args.pdfName,
+      testNumber: args.testNumber,
+      year: args.year,
+      category: args.category,
+    });
+
+    return result;
+  },
+});
+
+/**
+ * Get statistics on imported official questions.
+ */
+export const getOfficialQuestionStats = action({
+  args: {},
+  handler: async (ctx): Promise<unknown> => {
+    const stats = await ctx.runQuery(
+      internal.officialQuestions.getImportStats as unknown as Parameters<typeof ctx.runQuery>[0],
+      {}
+    );
+    return stats;
   },
 });

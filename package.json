@@ -2,6 +2,7 @@
   "name": "1600club",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -26,7 +27,12 @@
     "dlq:reading:pending": "npx convex run readingQuestionDLQ:getPendingItems",
     "dlq:reading:recent": "npx convex run readingQuestionDLQ:getRecentItems",
     "dlq:reading:retry": "npx convex run readingQuestionDLQ:retryPendingItems",
-    "dlq:reading:clear-succeeded": "npx convex run readingQuestionDLQ:clearSucceeded"
+    "dlq:reading:clear-succeeded": "npx convex run readingQuestionDLQ:clearSucceeded",
+    "import:pdf": "npx convex run seed:importOfficialPdf",
+    "import:stats": "npx convex run seed:getOfficialQuestionStats",
+    "official:stats": "npx convex run officialQuestions:getImportStats",
+    "official:clear": "npx convex run officialQuestions:clearAll",
+    "generate:icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
@@ -59,7 +65,10 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@serwist/next": "^9.0.12",
     "@types/katex": "^0.16.7",
-    "@types/react-katex": "^3.0.4"
+    "@types/react-katex": "^3.0.4",
+    "serwist": "^9.0.12",
+    "sharp": "^0.33.5"
   }
 }

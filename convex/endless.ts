@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { QueryCtx, MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 // ─────────────────────────────────────────────────────────
 // CONSTANTS
@@ -138,6 +139,23 @@ async function selectNextQuestion(
   if (domain) {
     allQuestions = allQuestions.filter((q) => q.domain === domain);
   }
+
+  // Filter for verified questions only (or official questions)
+  allQuestions = allQuestions.filter((q) => {
+    // Official questions are always allowed
+    if (
+      q.source?.type === "official_collegeboard" ||
+      q.source?.type === "official_practice_test"
+    ) {
+      return true;
+    }
+    // Agent-generated questions must be verified
+    if (q.source?.type === "agent_generated") {
+      return q.reviewStatus === "verified";
+    }
+    // Default: allow (legacy/seeded questions without source)
+    return true;
+  });
 
   if (allQuestions.length === 0) {
     return null;
@@ -370,6 +388,13 @@ export const submitEndlessAnswer = mutation({
       lastModifiedAt: now,
       submittedAt: now,
       timeSpentMs: args.timeSpentMs,
+    });
+
+    // 1b. Record performance stats for question quality tracking
+    await ctx.scheduler.runAfter(0, internal.questionPerformance.recordQuestionAttempt, {
+      questionId: args.questionId,
+      selectedAnswer: args.selectedAnswer,
+      isCorrect,
     });
 
     // 2. Update streaks

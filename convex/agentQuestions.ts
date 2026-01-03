@@ -142,6 +142,8 @@ export const createAgentQuestion = mutation({
       },
       generationMetadata: args.generationMetadata,
       tags: args.tags ?? [args.domain, args.skill, "agent_generated"],
+      // New: Set initial review status so questions must be verified before showing to students
+      reviewStatus: "pending",
     });
 
     // Create answer options
@@ -195,6 +197,7 @@ export const createAgentQuestionInternal = internalMutation({
     ),
     mathDifficulty: v.optional(mathDifficultyValidator),
     rwDifficulty: v.optional(rwDifficultyValidator),
+    passageId: v.optional(v.id("passages")),
     figure: v.optional(
       v.object({
         imageId: v.id("images"),
@@ -240,6 +243,7 @@ export const createAgentQuestionInternal = internalMutation({
       mathDifficulty: args.mathDifficulty,
       rwDifficulty: args.rwDifficulty,
       prompt: args.prompt,
+      passageId: args.passageId,
       figure: args.figure,
       correctAnswer: args.correctAnswer,
       source: {
@@ -248,6 +252,8 @@ export const createAgentQuestionInternal = internalMutation({
       },
       generationMetadata: args.generationMetadata,
       tags: args.tags ?? [args.domain, args.skill, "agent_generated"],
+      // New: Set initial review status so questions must be verified before showing to students
+      reviewStatus: "pending",
     });
 
     // Create answer options

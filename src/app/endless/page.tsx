@@ -708,7 +708,7 @@ function PlayingScreen({
     }
 
     // Trigger celebrations
-    const isLevelUp = currentQuestion.mastery && result.masteryLevel !== currentQuestion.mastery.level;
+    const isLevelUp = !!(currentQuestion.mastery && result.masteryLevel !== currentQuestion.mastery.level);
     if (result.isCorrect) {
       celebrateCorrectAnswer(result.currentStreak, isLevelUp);
     } else {

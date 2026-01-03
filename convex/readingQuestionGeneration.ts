@@ -9,19 +9,13 @@ import { Id } from "./_generated/dataModel";
 import {
   sampleReadingQuestionParams,
   computeRwDifficulty,
-  computeOverallDifficulty,
   type SampledReadingParams,
   type QuestionType,
-  QUESTION_TYPES,
-  QUESTION_TYPE_DISTRIBUTION,
-  READING_DISTRACTOR_STRATEGIES,
 } from "./readingQuestionTemplates";
 
 import {
   buildPassageGenerationPrompt,
   buildQuestionGenerationPrompt,
-  buildDistractorInstructions,
-  QUESTION_TYPE_PROMPTS,
 } from "./readingQuestionPrompts";
 
 // Error stage types for DLQ
@@ -282,15 +276,15 @@ async function generateSingleQuestion(
       // Build the full prompt (passage + question)
       const fullPrompt = question.questionStem;
 
-      // Compute difficulty
+      // Compute difficulty factors (mutation computes overall difficulty internally)
       const rwDifficulty = computeRwDifficulty(params);
-      const overallDifficulty = computeOverallDifficulty(params);
-      const legacyDifficulty = overallDifficulty < 0.33 ? 1 : overallDifficulty < 0.67 ? 2 : 3;
 
       // Map question type to domain and skill
       const { domain, skill } = mapQuestionTypeToDomainSkill(params.questionType);
 
       // Create the question
+      // Note: createAgentQuestionInternal computes difficulty and overallDifficulty
+      // internally from rwDifficulty, so we don't pass them explicitly
       const questionId = (await ctx.runMutation(
         internal.agentQuestions.createAgentQuestionInternal,
         {
@@ -298,8 +292,6 @@ async function generateSingleQuestion(
           category: "reading_writing" as const,
           domain,
           skill,
-          difficulty: legacyDifficulty,
-          overallDifficulty,
           prompt: fullPrompt,
           passageId,
           correctAnswer: question.correctAnswer,

@@ -175,7 +175,7 @@ export const generateFullTest = action({
     });
 
     // Renumber math questions starting from 55
-    const renumberedMath = mathQuestions.map((q, i) => ({
+    const renumberedMath = mathQuestions.map((q: PDFQuestion, i: number) => ({
       ...q,
       number: 55 + i,
     }));

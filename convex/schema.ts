@@ -190,6 +190,29 @@ export default defineSchema({
       })
     ),
     tags: v.array(v.string()),
+
+    // ─────────────────────────────────────────────────────────
+    // REVIEW STATUS (for LLM verification before showing to students)
+    // ─────────────────────────────────────────────────────────
+    reviewStatus: v.optional(
+      v.union(
+        v.literal("pending"), // Generated, not yet reviewed
+        v.literal("verified"), // Passed review, ready for students
+        v.literal("needs_revision"), // Review found issues
+        v.literal("rejected"), // Failed review, don't show
+        v.literal("flagged_high_error") // Verified but flagged due to high student error rate
+      )
+    ),
+    lastReviewedAt: v.optional(v.number()),
+    reviewMetadata: v.optional(
+      v.object({
+        reviewVersion: v.string(),
+        answerValidated: v.boolean(),
+        originalCorrectAnswer: v.optional(v.string()), // If answer was corrected
+        confidenceScore: v.number(),
+        reviewNotes: v.optional(v.string()),
+      })
+    ),
   })
     .index("by_category", ["category"])
     .index("by_domain", ["domain"])
@@ -198,7 +221,10 @@ export default defineSchema({
     .index("by_passage", ["passageId"])
     // NEW: Composite indexes for efficient difficulty-based queries
     .index("by_category_and_overall_difficulty", ["category", "overallDifficulty"])
-    .index("by_category_domain_difficulty", ["category", "domain", "overallDifficulty"]),
+    .index("by_category_domain_difficulty", ["category", "domain", "overallDifficulty"])
+    // Review status indexes
+    .index("by_review_status", ["reviewStatus"])
+    .index("by_category_review_status", ["category", "reviewStatus"]),
 
   // ─────────────────────────────────────────────────────────
   // ANSWER OPTIONS
@@ -728,6 +754,54 @@ export default defineSchema({
     .index("by_batch_id", ["batchId"]),
 
   // ─────────────────────────────────────────────────────────
+  // QUESTION PERFORMANCE STATS (for tracking student error rates per question)
+  // ─────────────────────────────────────────────────────────
+  questionPerformanceStats: defineTable({
+    questionId: v.id("questions"),
+    totalAttempts: v.number(),
+    correctAttempts: v.number(),
+    errorRate: v.number(), // Computed: 1 - (correct/total)
+    answerDistribution: v.object({
+      A: v.number(),
+      B: v.number(),
+      C: v.number(),
+      D: v.number(),
+    }),
+    mostCommonWrongAnswer: v.optional(v.string()),
+    flaggedForReview: v.boolean(),
+    flagReason: v.optional(v.string()),
+    lastUpdatedAt: v.number(),
+  })
+    .index("by_question", ["questionId"])
+    .index("by_error_rate", ["errorRate"])
+    .index("by_flagged", ["flaggedForReview"]),
+
+  // ─────────────────────────────────────────────────────────
+  // QUESTION REVIEW DLQ (Dead Letter Queue for failed review attempts)
+  // ─────────────────────────────────────────────────────────
+  questionReviewDLQ: defineTable({
+    questionId: v.id("questions"),
+    reviewType: v.union(
+      v.literal("initial_verification"),
+      v.literal("high_error_rate_recheck")
+    ),
+    error: v.string(),
+    retryCount: v.number(),
+    maxRetries: v.number(),
+    lastAttemptAt: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("retrying"),
+      v.literal("succeeded"),
+      v.literal("failed_permanently")
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_question", ["questionId"])
+    .index("by_created_at", ["createdAt"]),
+
+  // ─────────────────────────────────────────────────────────
   // GAMIFICATION - USER ACHIEVEMENTS
   // ─────────────────────────────────────────────────────────
   userAchievements: defineTable({
@@ -938,6 +1012,72 @@ export default defineSchema({
     .index("by_stripe_subscription_id", ["stripeSubscriptionId"])
     .index("by_stripe_customer_id", ["stripeCustomerId"])
     .index("by_status", ["status"]),
+
+  // ─────────────────────────────────────────────────────────
+  // OFFICIAL QUESTIONS (Imported from College Board PDFs)
+  // ─────────────────────────────────────────────────────────
+  officialQuestions: defineTable({
+    // Source info
+    source: v.object({
+      pdfName: v.string(), // e.g., "SAT Practice Test 1"
+      testNumber: v.optional(v.number()),
+      sectionNumber: v.number(),
+      questionNumber: v.number(),
+      year: v.optional(v.number()),
+    }),
+    // Question classification
+    category: v.union(v.literal("reading_writing"), v.literal("math")),
+    questionType: v.string(), // e.g., "central_ideas", "inferences", etc.
+    domain: v.string(),
+    skill: v.string(),
+    // Passage (for reading questions)
+    passage: v.optional(
+      v.object({
+        content: v.string(),
+        title: v.optional(v.string()),
+        author: v.optional(v.string()),
+        source: v.optional(v.string()),
+        passageType: v.optional(
+          v.union(
+            v.literal("literary_narrative"),
+            v.literal("social_science"),
+            v.literal("natural_science"),
+            v.literal("humanities"),
+            v.literal("paired")
+          )
+        ),
+      })
+    ),
+    // Question content
+    questionStem: v.string(),
+    choices: v.object({
+      A: v.string(),
+      B: v.string(),
+      C: v.string(),
+      D: v.string(),
+    }),
+    correctAnswer: v.string(),
+    // Official explanation if available
+    officialExplanation: v.optional(v.string()),
+    // Analysis metadata (added by Claude during import)
+    analysisMetadata: v.optional(
+      v.object({
+        distractorStrategies: v.optional(v.array(v.string())),
+        keyInferences: v.optional(v.array(v.string())),
+        vocabularyTested: v.optional(v.array(v.string())),
+        difficultyEstimate: v.optional(v.number()),
+      })
+    ),
+    // Import tracking
+    importedAt: v.number(),
+    importBatchId: v.optional(v.string()),
+    // Whether this has been converted to a playable question
+    convertedToQuestionId: v.optional(v.id("questions")),
+  })
+    .index("by_category", ["category"])
+    .index("by_question_type", ["questionType"])
+    .index("by_source", ["source.pdfName", "source.questionNumber"])
+    .index("by_import_batch", ["importBatchId"]),
 
   // ─────────────────────────────────────────────────────────
   // PDF TEST PRODUCTS

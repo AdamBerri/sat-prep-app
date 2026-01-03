@@ -155,6 +155,11 @@ npm run dlq:data:retry           # Retry all pending items
 npm run dlq:reading:stats        # View DLQ statistics
 npm run dlq:reading:pending      # View pending items
 npm run dlq:reading:retry        # Retry all pending items
+
+# Official Question Import (from PDFs)
+npm run import:pdf               # Import questions from PDF
+npm run official:stats           # View import statistics
+npm run official:clear           # Clear all imported questions
 ```
 
 ## Tech Stack
@@ -323,26 +328,97 @@ Failed generations are saved for retry. Each item tracks which stage failed:
 - `storage` - Database insert failed
 
 ```bash
-# Check status
-npm run dlq:stats
+# Reading Data DLQ (charts/graphs)
+npm run dlq:data:stats
+npm run dlq:data:pending
+npm run dlq:data:retry
 
-# Retry failed items (up to 3 attempts each)
-npm run dlq:retry
-
-# View details
-npm run dlq:recent
+# Reading Question DLQ (passage-based)
+npm run dlq:reading:stats
+npm run dlq:reading:pending
+npm run dlq:reading:retry
 ```
+
+---
+
+## Official Question Import (PDF)
+
+Import questions from College Board SAT practice test PDFs. Uses Claude's vision to extract passages, questions, and answer choices.
+
+### Import from Local PDF
+
+```bash
+# Import reading/writing questions
+npm run import:pdf -- '{
+  "pdfPath": "/path/to/sat-practice-test-1.pdf",
+  "pdfName": "SAT Practice Test 1",
+  "testNumber": 1,
+  "category": "reading_writing"
+}'
+
+# Import math questions
+npm run import:pdf -- '{
+  "pdfPath": "/path/to/sat-practice-test-1-math.pdf",
+  "pdfName": "SAT Practice Test 1",
+  "testNumber": 1,
+  "category": "math"
+}'
+
+# With answer key (merges correct answers)
+npm run import:pdf -- '{
+  "pdfPath": "/path/to/test.pdf",
+  "answerKeyPath": "/path/to/answer-key.pdf",
+  "pdfName": "SAT Practice Test 1",
+  "category": "reading_writing"
+}'
+```
+
+### View Import Statistics
+
+```bash
+# Get counts by category, question type, and source
+npm run official:stats
+
+# Clear all imported questions
+npm run official:clear
+```
+
+### How It Works
+
+1. **PDF Extraction** - Claude reads the PDF and identifies questions
+2. **Classification** - Each question is tagged with:
+   - Question type (central_ideas, inferences, vocabulary, etc.)
+   - Domain and skill
+   - Passage type (literary, science, social science, etc.)
+3. **Answer Merging** - If answer key provided, correct answers are matched
+4. **Deduplication** - Questions already imported are skipped
+
+### Use Cases
+
+- **Few-shot examples** - Imported questions serve as examples for AI generation
+- **Quality benchmarks** - Compare generated questions to official ones
+- **Pattern analysis** - Study question structures and distractor strategies
 
 ### Files
 
 | File | Purpose |
 |------|---------|
+| **Reading Questions (Passage-Based)** | |
+| `convex/readingQuestionGeneration.ts` | Main generation pipeline |
+| `convex/readingQuestionTemplates.ts` | Sampling params, distractor strategies |
+| `convex/readingQuestionPrompts.ts` | Claude prompts for each question type |
+| `convex/readingQuestionDLQ.ts` | Failed generation retry |
+| **Reading Data (Charts/Graphs)** | |
 | `convex/readingDataGeneration.ts` | Main pipeline |
 | `convex/readingDataTemplates.ts` | Sampling params, prompts |
 | `convex/readingDataImagePrompts.ts` | Chart prompts |
 | `convex/readingDataDLQ.ts` | Failed generation retry |
+| **Math Questions** | |
 | `convex/graphQuestionTemplates.ts` | Math graph templates |
 | `convex/graphImagePipeline.ts` | Math graph pipeline |
+| **Official Question Import** | |
+| `convex/pdfImport.ts` | PDF extraction with Claude |
+| `convex/officialQuestions.ts` | Store/query imported questions |
 
 ### Estimated Costs
 

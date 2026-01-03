@@ -1,4 +1,4 @@
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
@@ -59,7 +59,7 @@ export const addToDLQ = internalMutation({
 /**
  * Get a single DLQ item by ID.
  */
-export const getItemById = query({
+export const getItemById = internalQuery({
   args: {
     dlqId: v.id("readingDataDLQ"),
   },

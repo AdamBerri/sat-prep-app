@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 // Save or update an answer
 export const saveAnswer = mutation({
@@ -174,6 +175,15 @@ export const submitAnswers = mutation({
         submittedAt: now,
         lastModifiedAt: now,
       });
+
+      // Record performance stats for question quality tracking
+      if (answer.selectedAnswer) {
+        await ctx.scheduler.runAfter(0, internal.questionPerformance.recordQuestionAttempt, {
+          questionId: answer.questionId,
+          selectedAnswer: answer.selectedAnswer,
+          isCorrect,
+        });
+      }
     }
 
     return answers.length;
