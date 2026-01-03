@@ -59,6 +59,89 @@ Questions can have the following `reviewStatus` values:
 └───────────────────────┘
 ```
 
+## Auto-Improvement System
+
+When the review finds issues, the system can **automatically fix** certain types of problems instead of just flagging them:
+
+### Auto-Fixable Issue Types
+
+| Issue Type | Description | Fix Method |
+|------------|-------------|------------|
+| `answer_wrong` | Marked correct answer is incorrect | Swap to actual correct answer |
+| `poor_distractor` | An answer choice is obviously wrong | Rewrite to be more plausible |
+| `unclear_choice` | An answer choice is ambiguous | Clarify the choice text |
+| `unclear_stem` | Question stem is unclear | Rewrite for clarity |
+| `ambiguous` | Multiple answers could be correct | Clarify or rewrite choices |
+| `too_easy` | Distractors are too obvious | Improve distractor quality |
+
+### Non-Auto-Fixable Issues
+
+These require manual intervention:
+- `too_hard` - Needs domain expertise to simplify
+- Question doesn't match passage - Needs regeneration
+- Figure/graph mismatch - Needs visual regeneration
+
+### Improvement Flow
+
+```
+Question with issues detected
+           │
+           ▼
+    ┌──────────────────┐
+    │  Are issues      │
+    │  auto-fixable?   │
+    └──────────────────┘
+           │
+     ┌─────┴─────┐
+     ▼           ▼
+   YES          NO
+     │           │
+     ▼           ▼
+┌─────────────┐  ┌──────────────┐
+│improveQuestion│ │needs_revision│
+│ (LLM fixes) │  │ (manual fix) │
+└─────────────┘  └──────────────┘
+     │
+     ▼
+┌─────────────┐
+│ Re-verify   │
+│ (2nd review)│
+└─────────────┘
+     │
+     ▼
+┌─────────────┐
+│  verified   │
+└─────────────┘
+```
+
+### Improvement History
+
+All changes are tracked in `improvementHistory`:
+
+```typescript
+{
+  improvedAt: 1704067200000,
+  improvementType: "answer_choice",
+  fieldChanged: "optionB",
+  originalValue: "The cat sat on the mat",
+  newValue: "The protagonist's internal conflict",
+  reason: "Original distractor was unrelated to the passage theme"
+}
+```
+
+### Using the Improvement System
+
+```bash
+# The improvement happens automatically during review
+npx convex run questionReview:reviewUnverifiedQuestions '{"limit": 10}'
+
+# You can also improve a specific question manually
+npx convex run questionReview:improveQuestion '{
+  "questionId": "...",
+  "issues": [{"type": "poor_distractor", "description": "Option B is obviously wrong"}]
+}'
+```
+
 ## Database Schema
 
 ### Fields Added to `questions` Table
@@ -84,6 +167,16 @@ reviewMetadata: v.optional(v.object({
   confidenceScore: v.number(),         // LLM's confidence (0-1)
   reviewNotes: v.optional(v.string()), // Notes for human review
 })),
+
+// Improvement history (tracks all changes made to question)
+improvementHistory: v.optional(v.array(v.object({
+  improvedAt: v.number(),
+  improvementType: v.string(),  // "answer_choice", "question_stem", "correct_answer"
+  fieldChanged: v.string(),     // "prompt", "optionA", "optionB", etc.
+  originalValue: v.string(),
+  newValue: v.string(),
+  reason: v.string(),
+}))),
 ```
 
 ### New Table: `questionPerformanceStats`
@@ -138,8 +231,16 @@ questionReviewDLQ: defineTable({
 
 ```
 convex/
-├── questionReview.ts           # LLM review actions (Node.js runtime)
+├── questionReview.ts           # LLM review + improvement actions (Node.js runtime)
+│   ├── reviewSingleQuestion    # Review a question, auto-improve if needed
+│   ├── reviewUnverifiedQuestions # Batch review multiple questions
+│   └── improveQuestion         # Fix issues in a question using LLM
 ├── questionReviewMutations.ts  # Database mutations and queries
+│   ├── updateQuestionReviewStatus  # Update review status
+│   ├── updateQuestionExplanations  # Update explanations
+│   ├── updateAnswerOption      # Rewrite an answer choice
+│   ├── updateQuestionStem      # Rewrite question prompt
+│   └── updateCorrectAnswer     # Change the correct answer
 ├── questionPerformance.ts      # Student performance tracking
 ├── agentQuestions.ts           # Modified to set reviewStatus: "pending"
 ├── endless.ts                  # Modified to filter verified questions
@@ -431,6 +532,36 @@ const ERROR_RATE_THRESHOLDS = {
 };
 ```
 
+### Manual Question Improvement
+
+If you need to manually improve specific aspects of a question:
+
+```typescript
+// Rewrite an answer choice
+await ctx.runMutation(internal.questionReviewMutations.updateAnswerOption, {
+  questionId: "...",
+  optionKey: "B",  // "A", "B", "C", or "D"
+  newContent: "A more plausible distractor",
+  reason: "Original was too obviously wrong",
+});
+
+// Rewrite the question prompt
+await ctx.runMutation(internal.questionReviewMutations.updateQuestionStem, {
+  questionId: "...",
+  newPrompt: "Which of the following best describes...",
+  reason: "Original was ambiguous",
+});
+
+// Change the correct answer
+await ctx.runMutation(internal.questionReviewMutations.updateCorrectAnswer, {
+  questionId: "...",
+  newCorrectAnswer: "C",
+  reason: "Original answer was incorrect",
+});
+```
+
+All changes are logged in `improvementHistory` for auditing.
+
 ## Future Improvements
 
 - [ ] Admin UI for reviewing flagged questions
@@ -438,3 +569,4 @@ const ERROR_RATE_THRESHOLDS = {
 - [ ] Manual override to mark questions as verified without LLM review
 - [ ] Analytics dashboard for review metrics
 - [ ] Email alerts for high error rate questions
+- [x] Auto-improvement system for fixable issues (IMPLEMENTED)

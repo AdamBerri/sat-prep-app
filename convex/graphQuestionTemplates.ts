@@ -39,7 +39,7 @@ export const COORDINATE_PLANE_QUESTIONS: GraphQuestionTemplate[] = [
       "The slope is rise over run. From $(-2, -1)$ to $(2, 1)$: rise $= 1 - (-1) = 2$, run $= 2 - (-2) = 4$. Slope $= \\frac{2}{4} = \\frac{1}{2}$.",
     figureType: "graph",
     imageGenPrompt:
-      "Create an SAT-style coordinate plane graph. Draw a straight line passing through the points (-2, -1) and (2, 1) with small dots marking these points. Show x and y axes from -5 to 5 with integer tick marks labeled. Include a light gray grid background. Black lines, white background, clean and minimal like a standardized test.",
+      "Create an SAT-style coordinate plane graph as a flat digital vector illustration. Draw a straight line passing through the points (-2, -1) and (2, 1) with small dots marking these points. Show x and y axes from -5 to 5 with integer tick marks labeled. Crisp black lines on pure white background with light gray grid. Print-ready graphic, not a photograph - no paper texture or shadows.",
     imageAltText:
       "Graph of a linear function on a coordinate plane passing through (-2, -1) and (2, 1)",
   },
@@ -59,7 +59,7 @@ export const COORDINATE_PLANE_QUESTIONS: GraphQuestionTemplate[] = [
       "Factor the quadratic: $x^2 - 4x + 3 = (x - 1)(x - 3)$. Setting equal to zero: $x = 1$ or $x = 3$.",
     figureType: "graph",
     imageGenPrompt:
-      "Create an SAT-style coordinate plane showing a parabola. The parabola opens upward with vertex at (2, -1), crossing the x-axis at x=1 and x=3, and passing through (0, 3) on the y-axis. Mark the x-intercepts with small dots. Show axes from -1 to 5 on x and -2 to 6 on y with labeled tick marks. Clean black curve on white background with light grid.",
+      "Create an SAT-style coordinate plane as a flat digital vector illustration showing a parabola. The parabola opens upward with vertex at (2, -1), crossing the x-axis at x=1 and x=3, and passing through (0, 3) on the y-axis. Mark the x-intercepts with small dots. Show axes from -1 to 5 on x and -2 to 6 on y with labeled tick marks. Crisp black curve on pure white background with light grid. Print-ready graphic, not a photograph.",
     imageAltText:
       "Graph of a parabola opening upward with x-intercepts at x = 1 and x = 3",
   },
@@ -79,7 +79,7 @@ export const COORDINATE_PLANE_QUESTIONS: GraphQuestionTemplate[] = [
       "For $f(x) = 2^x$, when $x = 0$, $f(0) = 2^0 = 1$. The y-intercept is $(0, 1)$. The function is always increasing and never crosses the x-axis.",
     figureType: "graph",
     imageGenPrompt:
-      "Create an SAT-style graph of the exponential function f(x) = 2^x. The curve passes through (-2, 0.25), (-1, 0.5), (0, 1), (1, 2), (2, 4), and (3, 8). Mark the y-intercept at (0, 1) with a dot. Show x-axis from -3 to 4, y-axis from 0 to 8. The curve approaches but never touches the x-axis on the left. Label it 'f(x) = 2^x'. Clean standardized test style.",
+      "Create an SAT-style graph as a flat digital vector illustration of the exponential function f(x) = 2^x. The curve passes through (-2, 0.25), (-1, 0.5), (0, 1), (1, 2), (2, 4), and (3, 8). Mark the y-intercept at (0, 1) with a dot. Show x-axis from -3 to 4, y-axis from 0 to 8. The curve approaches but never touches the x-axis on the left. Label it 'f(x) = 2^x'. Crisp black lines on pure white background. Print-ready graphic, not a photograph.",
     imageAltText:
       "Graph of exponential function 2^x showing rapid growth with y-intercept at (0, 1)",
   },
@@ -106,7 +106,7 @@ export const DATA_DISPLAY_QUESTIONS: GraphQuestionTemplate[] = [
       "From the graph: 10th grade = 35 students, 9th grade = 25 students. Difference = $35 - 25 = 10$.",
     figureType: "data_display",
     imageGenPrompt:
-      "Create an SAT-style vertical bar chart titled 'Science Fair Participation'. Four bars for grades 9th, 10th, 11th, 12th with heights 25, 35, 30, and 40 students respectively. Y-axis labeled 'Number of Students' from 0 to 50 with gridlines at 10, 20, 30, 40. Bars should be solid gray with the exact values clearly distinguishable. Clean, professional standardized test appearance.",
+      "Create an SAT-style vertical bar chart as a flat digital vector illustration titled 'Science Fair Participation'. Four bars for grades 9th, 10th, 11th, 12th with heights 25, 35, 30, and 40 students respectively. Y-axis labeled 'Number of Students' from 0 to 50 with gridlines at 10, 20, 30, 40. Solid gray bars with exact values clearly distinguishable. Crisp lines on pure white background. Print-ready graphic, not a photograph - no paper texture or shadows.",
     imageAltText:
       "Bar chart showing science fair participation: 9th grade 25, 10th grade 35, 11th grade 30, 12th grade 40",
   },
@@ -126,7 +126,7 @@ export const DATA_DISPLAY_QUESTIONS: GraphQuestionTemplate[] = [
       "Following the line of best fit to $x = 7$ hours, the predicted score is approximately $88$.",
     figureType: "data_display",
     imageGenPrompt:
-      "Create an SAT-style scatter plot showing 'Hours Studied' (x-axis, 0-10) vs 'Test Score' (y-axis, 50-100). Plot points at approximately (1,55), (2,62), (3,68), (4,72), (5,78), (6,82), (8,92), (9,95). Draw a line of best fit passing roughly through (0,50) and (10,95). Points should be solid black dots, line should be thin and straight. Professional standardized test style with grid.",
+      "Create an SAT-style scatter plot as a flat digital vector illustration showing 'Hours Studied' (x-axis, 0-10) vs 'Test Score' (y-axis, 50-100). Plot points at approximately (1,55), (2,62), (3,68), (4,72), (5,78), (6,82), (8,92), (9,95). Draw a line of best fit passing roughly through (0,50) and (10,95). Solid black dots, thin straight line. Crisp lines on pure white background with light grid. Print-ready graphic, not a photograph.",
     imageAltText:
       "Scatter plot showing positive correlation between hours studied and test scores with line of best fit",
   },
@@ -146,7 +146,7 @@ export const DATA_DISPLAY_QUESTIONS: GraphQuestionTemplate[] = [
       "The 70-79 range has 9 students. Percentage = $\\frac{9}{30} \\times 100 = 30\\%$.",
     figureType: "data_display",
     imageGenPrompt:
-      "Create an SAT-style histogram titled 'Test Score Distribution'. Five adjacent bars (no gaps) for score ranges 50-59, 60-69, 70-79, 80-89, 90-100 with heights 3, 5, 9, 8, 5 students. Y-axis labeled 'Number of Students' from 0 to 12. The 70-79 bar should be clearly the tallest at height 9. Clean horizontal gridlines, solid gray bars, professional test appearance.",
+      "Create an SAT-style histogram as a flat digital vector illustration titled 'Test Score Distribution'. Five adjacent bars (no gaps) for score ranges 50-59, 60-69, 70-79, 80-89, 90-100 with heights 3, 5, 9, 8, 5 students. Y-axis labeled 'Number of Students' from 0 to 12. The 70-79 bar should be clearly the tallest at height 9. Clean horizontal gridlines, solid gray bars. Crisp lines on pure white background. Print-ready graphic, not a photograph.",
     imageAltText:
       "Histogram of test scores showing distribution with peak in 70-79 range (9 students)",
   },
@@ -173,7 +173,7 @@ export const GEOMETRIC_QUESTIONS: GraphQuestionTemplate[] = [
       "The sum of angles in a triangle is $180°$. So $\\angle C = 180° - 50° - 60° = 70°$.",
     figureType: "geometric",
     imageGenPrompt:
-      "Create an SAT-style triangle diagram. Draw an acute triangle ABC with vertex A at bottom-left, B at bottom-right, and C at top. Label each vertex with its letter. Mark angle A with a small arc and label '50°', mark angle B with a small arc and label '60°', mark angle C with just an arc (no degree label - that's what students solve for). Clean black lines on white, no fill, professional geometry figure style.",
+      "Create an SAT-style triangle diagram as a flat digital vector illustration. Draw an acute triangle ABC with vertex A at bottom-left, B at bottom-right, and C at top. Label each vertex with its letter. Mark angle A with a small arc and label '50°', mark angle B with a small arc and label '60°', mark angle C with just an arc (no degree label - that's what students solve for). Crisp black lines on pure white background, no fill. Print-ready graphic, not a photograph - no paper texture or shadows.",
     imageAltText:
       "Triangle ABC with angle A = 50 degrees and angle B = 60 degrees, angle C unlabeled",
   },
@@ -193,7 +193,7 @@ export const GEOMETRIC_QUESTIONS: GraphQuestionTemplate[] = [
       "Sector area = $\\frac{\\theta}{360°} \\times \\pi r^2 = \\frac{72°}{360°} \\times \\pi (5)^2 = \\frac{1}{5} \\times 25\\pi = 5\\pi$.",
     figureType: "geometric",
     imageGenPrompt:
-      "Create an SAT-style circle diagram with a shaded sector. Draw a circle with a center dot. Show two radii forming a 72-degree sector, with the sector shaded in light gray. Label one radius as '5'. Mark the central angle with a small arc and label '72°'. The rest of the circle should be white/unshaded. Clean black outlines, professional geometry figure for a standardized test.",
+      "Create an SAT-style circle diagram as a flat digital vector illustration with a shaded sector. Draw a circle with a center dot. Show two radii forming a 72-degree sector, with the sector shaded in light gray. Label one radius as '5'. Mark the central angle with a small arc and label '72°'. The rest of the circle should be white/unshaded. Crisp black outlines on pure white background. Print-ready graphic, not a photograph - no paper texture or shadows.",
     imageAltText: "Circle with radius 5 and a 72-degree shaded sector",
   },
   {
@@ -212,7 +212,7 @@ export const GEOMETRIC_QUESTIONS: GraphQuestionTemplate[] = [
       "$\\angle 1$ and $\\angle 2$ are co-interior angles (same-side interior angles). They are supplementary, so $\\angle 2 = 180° - 115° = 65°$.",
     figureType: "geometric",
     imageGenPrompt:
-      "Create an SAT-style parallel lines diagram. Draw two horizontal parallel lines labeled 'l' (top) and 'm' (bottom) with small arrows indicating they extend infinitely. A diagonal transversal line labeled 't' crosses both. At the upper intersection, mark angle 1 on the interior right side and label it '115°'. At the lower intersection, mark angle 2 on the interior left side (co-interior to angle 1) with just '2' label, no degree. Clean black lines, white background, standardized test geometry style.",
+      "Create an SAT-style parallel lines diagram as a flat digital vector illustration. Draw two horizontal parallel lines labeled 'l' (top) and 'm' (bottom) with small arrows indicating they extend infinitely. A diagonal transversal line labeled 't' crosses both. At the upper intersection, mark angle 1 on the interior right side and label it '115°'. At the lower intersection, mark angle 2 on the interior left side (co-interior to angle 1) with just '2' label, no degree. Crisp black lines on pure white background. Print-ready graphic, not a photograph - no paper texture or shadows.",
     imageAltText:
       "Two parallel lines l and m crossed by transversal t, with angle 1 = 115° and angle 2 to be found",
   },

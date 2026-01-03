@@ -213,6 +213,22 @@ export default defineSchema({
         reviewNotes: v.optional(v.string()),
       })
     ),
+
+    // ─────────────────────────────────────────────────────────
+    // IMPROVEMENT HISTORY (tracks all auto-improvements made to question)
+    // ─────────────────────────────────────────────────────────
+    improvementHistory: v.optional(
+      v.array(
+        v.object({
+          improvedAt: v.number(),
+          improvementType: v.string(), // "answer_choice", "question_stem", "correct_answer"
+          fieldChanged: v.string(), // "prompt", "optionA", "optionB", etc.
+          originalValue: v.string(),
+          newValue: v.string(),
+          reason: v.string(),
+        })
+      )
+    ),
   })
     .index("by_category", ["category"])
     .index("by_domain", ["domain"])

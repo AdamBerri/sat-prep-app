@@ -17,12 +17,14 @@ import {
   GraduationCap,
   CreditCard,
   FileText,
+  XCircle,
 } from "lucide-react";
 import { SubscriptionGate } from "@/components/SubscriptionGate";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/progress", label: "Progress", icon: TrendingUp },
+  { href: "/dashboard/wrong-answers", label: "Wrong Answers", icon: XCircle },
   { href: "/dashboard/history", label: "History", icon: History },
   { href: "/practice", label: "Practice", icon: BookOpen },
   { href: "/endless", label: "Endless Mode", icon: Flame },

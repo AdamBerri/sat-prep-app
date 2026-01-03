@@ -199,8 +199,10 @@ export const reviewSingleQuestion = internalAction({
     questionId: v.id("questions"),
     reviewType: v.union(
       v.literal("initial_verification"),
-      v.literal("high_error_rate_recheck")
+      v.literal("high_error_rate_recheck"),
+      v.literal("post_improvement_verification")
     ),
+    skipAutoImprove: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     console.log(`\nReviewing question ${args.questionId}...`);
@@ -284,6 +286,50 @@ export const reviewSingleQuestion = internalAction({
         }
       }
 
+      // ─────────────────────────────────────────────────────────
+      // AUTO-IMPROVEMENT: If issues are fixable, improve and re-verify
+      // ─────────────────────────────────────────────────────────
+      if (
+        reviewStatus === "needs_revision" &&
+        reviewResult.issues &&
+        reviewResult.issues.length > 0 &&
+        !args.skipAutoImprove &&
+        args.reviewType !== "post_improvement_verification"
+      ) {
+        // Filter to auto-fixable issues
+        const autoFixableIssues = reviewResult.issues.filter(isAutoFixable);
+
+        if (autoFixableIssues.length > 0) {
+          console.log(`  Found ${autoFixableIssues.length} auto-fixable issues, attempting improvement...`);
+
+          // Attempt auto-improvement
+          const improveResult = await improveQuestion(ctx, {
+            questionId: args.questionId,
+            issues: autoFixableIssues,
+          });
+
+          if (improveResult.success) {
+            console.log(`  Improvement successful, re-verifying...`);
+
+            // Re-verify the improved question
+            const reVerifyResult = await reviewSingleQuestion(ctx, {
+              questionId: args.questionId,
+              reviewType: "post_improvement_verification",
+              skipAutoImprove: true, // Prevent infinite loops
+            });
+
+            return {
+              ...reVerifyResult,
+              autoImproved: true,
+              improvementsApplied: improveResult.improvementsApplied,
+            };
+          } else {
+            console.log(`  Improvement failed: ${improveResult.error}`);
+            // Continue with original needs_revision status
+          }
+        }
+      }
+
       // Update question review status
       await ctx.runMutation(internal.questionReviewMutations.updateQuestionReviewStatus, {
         questionId: args.questionId,
@@ -313,6 +359,7 @@ export const reviewSingleQuestion = internalAction({
         reviewStatus,
         answerCorrected: !!newCorrectAnswer,
         confidenceScore: reviewResult.confidenceScore,
+        autoImproved: false,
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
@@ -329,6 +376,258 @@ export const reviewSingleQuestion = internalAction({
     }
   },
 });
+
+// ─────────────────────────────────────────────────────────
+// IMPROVEMENT PROMPT TEMPLATE
+// ─────────────────────────────────────────────────────────
+
+function buildImprovementPrompt(
+  question: Doc<"questions">,
+  options: Doc<"answerOptions">[],
+  passage: Doc<"passages"> | null,
+  issues: Array<{ type: string; description: string }>
+): string {
+  const sortedOptions = options.sort((a, b) => a.order - b.order);
+
+  let passageSection = "";
+  if (passage) {
+    passageSection = `
+PASSAGE:
+Title: ${passage.title || "Untitled"}
+Author: ${passage.author || "Unknown"}
+
+${passage.content}
+
+---
+`;
+  }
+
+  const issuesList = issues
+    .map((issue, i) => `${i + 1}. ${issue.type}: ${issue.description}`)
+    .join("\n");
+
+  return `You are an expert SAT question editor. A question has been flagged with issues that need fixing.
+
+${passageSection}
+ORIGINAL QUESTION:
+Category: ${question.category}
+Domain: ${question.domain}
+Skill: ${question.skill}
+
+Question Stem: ${question.prompt}
+
+Answer Choices:
+A) ${sortedOptions.find((o) => o.key === "A")?.content || "N/A"}
+B) ${sortedOptions.find((o) => o.key === "B")?.content || "N/A"}
+C) ${sortedOptions.find((o) => o.key === "C")?.content || "N/A"}
+D) ${sortedOptions.find((o) => o.key === "D")?.content || "N/A"}
+
+Current Correct Answer: ${question.correctAnswer}
+
+ISSUES FOUND:
+${issuesList}
+
+YOUR TASK:
+Fix the issues while maintaining:
+- SAT style and difficulty level
+- The same skill being tested (${question.skill})
+- Valid question structure with exactly one correct answer
+- Plausible distractors that test specific misconceptions
+
+For each fix:
+- If an answer choice is obviously wrong or irrelevant, rewrite it to be a plausible distractor
+- If the question stem is unclear, clarify it while keeping the same intent
+- If the correct answer is wrong, identify and set the actual correct answer
+- Make minimal changes - only fix what's broken
+
+IMPORTANT: Respond with ONLY a JSON object, no other text.
+
+{
+  "improvements": [
+    {
+      "field": "prompt" | "optionA" | "optionB" | "optionC" | "optionD" | "correctAnswer",
+      "newValue": "the improved text (or A/B/C/D for correctAnswer)",
+      "reason": "why this change fixes the issue"
+    }
+  ],
+  "newCorrectAnswer": "A" | "B" | "C" | "D",
+  "verificationNotes": "Brief explanation confirming the improved question is now valid with exactly one correct answer"
+}`;
+}
+
+// ─────────────────────────────────────────────────────────
+// IMPROVEMENT RESPONSE INTERFACE
+// ─────────────────────────────────────────────────────────
+
+interface ImprovementResponse {
+  improvements: Array<{
+    field: "prompt" | "optionA" | "optionB" | "optionC" | "optionD" | "correctAnswer";
+    newValue: string;
+    reason: string;
+  }>;
+  newCorrectAnswer: string;
+  verificationNotes: string;
+}
+
+// ─────────────────────────────────────────────────────────
+// IMPROVEMENT ACTION
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Improve a question that has fixable issues.
+ * Rewrites answer choices, question stem, or corrects the answer.
+ */
+export const improveQuestion = internalAction({
+  args: {
+    questionId: v.id("questions"),
+    issues: v.array(
+      v.object({
+        type: v.string(),
+        description: v.string(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    console.log(`\nImproving question ${args.questionId}...`);
+    console.log(`  Issues to fix: ${args.issues.length}`);
+
+    const anthropic = getAnthropicClient();
+
+    // Fetch question data
+    const questionData = await ctx.runQuery(
+      internal.questionReviewMutations.getQuestionForReview,
+      { questionId: args.questionId }
+    );
+
+    if (!questionData) {
+      console.log(`  Question ${args.questionId} not found`);
+      return { success: false, error: "Question not found" };
+    }
+
+    try {
+      // Build improvement prompt
+      const prompt = buildImprovementPrompt(
+        questionData.question,
+        questionData.options,
+        questionData.passage,
+        args.issues
+      );
+
+      console.log(`  Calling Claude for improvements...`);
+
+      // Call Claude for improvements
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        messages: [{ role: "user", content: prompt }],
+      });
+
+      const textBlock = response.content.find((b) => b.type === "text");
+      if (!textBlock || textBlock.type !== "text") {
+        throw new Error("Claude returned no text response");
+      }
+
+      // Parse JSON response
+      const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("Claude response did not contain valid JSON");
+      }
+
+      const improvementResult = JSON.parse(jsonMatch[0]) as ImprovementResponse;
+
+      console.log(`  Improvements generated: ${improvementResult.improvements.length}`);
+
+      // Apply each improvement
+      for (const improvement of improvementResult.improvements) {
+        console.log(`  Applying: ${improvement.field} - ${improvement.reason}`);
+
+        if (improvement.field === "prompt") {
+          await ctx.runMutation(
+            internal.questionReviewMutations.updateQuestionStem,
+            {
+              questionId: args.questionId,
+              newPrompt: improvement.newValue,
+              reason: improvement.reason,
+            }
+          );
+        } else if (improvement.field === "correctAnswer") {
+          await ctx.runMutation(
+            internal.questionReviewMutations.updateCorrectAnswer,
+            {
+              questionId: args.questionId,
+              newCorrectAnswer: improvement.newValue,
+              reason: improvement.reason,
+            }
+          );
+        } else if (improvement.field.startsWith("option")) {
+          const optionKey = improvement.field.replace("option", ""); // "A", "B", "C", "D"
+          await ctx.runMutation(
+            internal.questionReviewMutations.updateAnswerOption,
+            {
+              questionId: args.questionId,
+              optionKey,
+              newContent: improvement.newValue,
+              reason: improvement.reason,
+            }
+          );
+        }
+      }
+
+      // Update correct answer if changed
+      if (
+        improvementResult.newCorrectAnswer &&
+        improvementResult.newCorrectAnswer !== questionData.question.correctAnswer
+      ) {
+        const alreadyUpdated = improvementResult.improvements.some(
+          (i) => i.field === "correctAnswer"
+        );
+        if (!alreadyUpdated) {
+          await ctx.runMutation(
+            internal.questionReviewMutations.updateCorrectAnswer,
+            {
+              questionId: args.questionId,
+              newCorrectAnswer: improvementResult.newCorrectAnswer,
+              reason: "Corrected during improvement process",
+            }
+          );
+        }
+      }
+
+      console.log(`  Improvements applied successfully`);
+
+      return {
+        success: true,
+        improvementsApplied: improvementResult.improvements.length,
+        verificationNotes: improvementResult.verificationNotes,
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      console.error(`  Improvement failed: ${errorMsg}`);
+      return { success: false, error: errorMsg };
+    }
+  },
+});
+
+// ─────────────────────────────────────────────────────────
+// AUTO-FIXABLE ISSUE TYPES
+// ─────────────────────────────────────────────────────────
+
+const AUTO_FIXABLE_ISSUE_TYPES = [
+  "answer_wrong",
+  "poor_distractor",
+  "unclear_choice",
+  "unclear_stem",
+  "ambiguous",
+  "too_easy",
+];
+
+function isAutoFixable(issue: { type: string; description: string }): boolean {
+  return AUTO_FIXABLE_ISSUE_TYPES.some(
+    (fixableType) =>
+      issue.type.toLowerCase().includes(fixableType) ||
+      fixableType.includes(issue.type.toLowerCase())
+  );
+}
 
 /**
  * Batch review unverified questions.

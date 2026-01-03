@@ -35,7 +35,7 @@ IMPORTANT GUIDELINES:
 1. ACCURACY FIRST: Include exact coordinates, values, measurements, and labels. The image must match the math in the question.
 2. NARRATIVE STYLE: Write in flowing sentences, not bullet points. Describe the scene naturally.
 3. CONCISE: Keep descriptions to 2-4 sentences. Don't over-specify styling - just describe what to draw.
-4. SAT STYLE: Mention "SAT-style" or "standardized test style" once. The renderer handles the clean, professional look.
+4. RENDER AS DIGITAL ILLUSTRATION: Always specify "as a flat digital vector illustration". The output should be a clean, print-ready graphic - NOT a photograph of a test paper. Emphasize: crisp black lines, pure white background, no paper texture, no shadows, no photorealistic effects.
 5. FIGURE TYPES:
    - "graph": Coordinate plane with functions, points, or lines
    - "data_display": Bar charts, histograms, scatter plots, pie charts
@@ -44,13 +44,13 @@ IMPORTANT GUIDELINES:
 EXAMPLES:
 
 Question: "The graph shows a line passing through (0, 2) and (4, 6). What is the slope?"
-Good prompt: "Create an SAT-style coordinate plane graph. Draw a straight line passing through the points (0, 2) and (4, 6) with small dots marking these two points. Show x and y axes from -2 to 8 with labeled integer tick marks and a light grid background."
+Good prompt: "Create an SAT-style coordinate plane graph as a flat digital vector illustration. Draw a straight line passing through the points (0, 2) and (4, 6) with small dots marking these two points. Show x and y axes from -2 to 8 with labeled integer tick marks. Render with crisp black lines on pure white background - no paper texture or photorealistic effects."
 
 Question: "A triangle has angles of 45°, 60°, and x°. Find x."
-Good prompt: "Create an SAT-style triangle diagram. Draw a triangle with vertices labeled A, B, and C. Mark angle A as 45° and angle B as 60° with small arcs and labels. Mark angle C with just an arc (no label - that's what students solve for). Clean black lines on white background."
+Good prompt: "Create an SAT-style triangle diagram as a flat digital vector illustration. Draw a triangle with vertices labeled A, B, and C. Mark angle A as 45° and angle B as 60° with small arcs and labels. Mark angle C with just an arc (no label - that's what students solve for). Crisp black lines on pure white background, print-ready graphic style."
 
 Question: "The bar graph shows monthly sales. March had 150 units and April had 200 units."
-Good prompt: "Create an SAT-style vertical bar chart showing monthly sales. Include bars for March (height 150) and April (height 200), with a y-axis labeled 'Units Sold' from 0 to 250. The bars should be clearly distinguishable with exact heights readable from the gridlines."
+Good prompt: "Create an SAT-style vertical bar chart as a flat digital vector illustration. Include bars for March (height 150) and April (height 200), with a y-axis labeled 'Units Sold' from 0 to 250. The bars should be solid gray with exact heights readable from the gridlines. Clean print-ready graphic, not a photograph."
 
 Now generate an image prompt for the given question. Output ONLY the prompt text, nothing else.`;
 

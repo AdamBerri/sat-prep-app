@@ -113,6 +113,134 @@ export const addToReviewDLQ = internalMutation({
 });
 
 // ─────────────────────────────────────────────────────────
+// QUESTION IMPROVEMENT MUTATIONS
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Update an answer option's content and log the change.
+ */
+export const updateAnswerOption = internalMutation({
+  args: {
+    questionId: v.id("questions"),
+    optionKey: v.string(), // "A", "B", "C", "D"
+    newContent: v.string(),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find the answer option
+    const options = await ctx.db
+      .query("answerOptions")
+      .withIndex("by_question", (q) => q.eq("questionId", args.questionId))
+      .collect();
+
+    const option = options.find((o) => o.key === args.optionKey);
+    if (!option) {
+      throw new Error(`Option ${args.optionKey} not found for question`);
+    }
+
+    const oldContent = option.content;
+
+    // Update the option
+    await ctx.db.patch(option._id, { content: args.newContent });
+
+    // Log the improvement
+    const question = await ctx.db.get(args.questionId);
+    if (question) {
+      const history = question.improvementHistory ?? [];
+      await ctx.db.patch(args.questionId, {
+        improvementHistory: [
+          ...history,
+          {
+            improvedAt: Date.now(),
+            improvementType: "answer_choice",
+            fieldChanged: `option${args.optionKey}`,
+            originalValue: oldContent,
+            newValue: args.newContent,
+            reason: args.reason,
+          },
+        ],
+      });
+    }
+
+    return { success: true, oldContent, newContent: args.newContent };
+  },
+});
+
+/**
+ * Update the question stem/prompt and log the change.
+ */
+export const updateQuestionStem = internalMutation({
+  args: {
+    questionId: v.id("questions"),
+    newPrompt: v.string(),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const question = await ctx.db.get(args.questionId);
+    if (!question) {
+      throw new Error("Question not found");
+    }
+
+    const oldPrompt = question.prompt;
+    const history = question.improvementHistory ?? [];
+
+    await ctx.db.patch(args.questionId, {
+      prompt: args.newPrompt,
+      improvementHistory: [
+        ...history,
+        {
+          improvedAt: Date.now(),
+          improvementType: "question_stem",
+          fieldChanged: "prompt",
+          originalValue: oldPrompt,
+          newValue: args.newPrompt,
+          reason: args.reason,
+        },
+      ],
+    });
+
+    return { success: true, oldPrompt, newPrompt: args.newPrompt };
+  },
+});
+
+/**
+ * Update the correct answer and log the change.
+ */
+export const updateCorrectAnswer = internalMutation({
+  args: {
+    questionId: v.id("questions"),
+    newCorrectAnswer: v.string(),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const question = await ctx.db.get(args.questionId);
+    if (!question) {
+      throw new Error("Question not found");
+    }
+
+    const oldAnswer = question.correctAnswer;
+    const history = question.improvementHistory ?? [];
+
+    await ctx.db.patch(args.questionId, {
+      correctAnswer: args.newCorrectAnswer,
+      improvementHistory: [
+        ...history,
+        {
+          improvedAt: Date.now(),
+          improvementType: "correct_answer",
+          fieldChanged: "correctAnswer",
+          originalValue: oldAnswer,
+          newValue: args.newCorrectAnswer,
+          reason: args.reason,
+        },
+      ],
+    });
+
+    return { success: true, oldAnswer, newAnswer: args.newCorrectAnswer };
+  },
+});
+
+// ─────────────────────────────────────────────────────────
 // QUERIES
 // ─────────────────────────────────────────────────────────
 

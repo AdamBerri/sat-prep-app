@@ -18,6 +18,8 @@ import {
   Flame,
   Target,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   BookOpen,
   X,
   Home,
@@ -46,6 +48,9 @@ interface FeedbackState {
   currentStreak: number;
   pointChange: number;
   masteryLevel: MasteryLevel;
+  questionId: string;
+  visitorId: string;
+  attemptId: string;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -498,6 +503,19 @@ function FeedbackScreen({
   feedback: FeedbackState;
   onNext: () => void;
 }) {
+  const [showPreviousAttempts, setShowPreviousAttempts] = useState(false);
+
+  // Query for previous attempts on this question
+  const previousAttempts = useQuery(api.progressTracking.getPreviousAttempts, {
+    visitorId: feedback.visitorId,
+    questionId: feedback.questionId as Id<"questions">,
+    excludeAttemptId: feedback.attemptId as Id<"examAttempts">,
+  });
+
+  // Check if user improved (got it right now, was wrong before)
+  const hasImproved = feedback.isCorrect && previousAttempts?.hasWrongAttempt;
+  const hasPreviousAttempts = previousAttempts && previousAttempts.totalAttempts > 0;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="card-paper max-w-sm w-full p-8 rounded-xl space-y-6 text-center animate-in fade-in zoom-in duration-200">
@@ -524,6 +542,19 @@ function FeedbackScreen({
           )}
         </div>
 
+        {/* Improvement celebration */}
+        {hasImproved && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+            <div className="flex items-center justify-center gap-2 text-green-600">
+              <TrendingUp className="w-5 h-5" />
+              <span className="font-body font-bold">You improved!</span>
+            </div>
+            <p className="text-sm text-green-600/80">
+              You got this question wrong before, but now you got it right!
+            </p>
+          </div>
+        )}
+
         {feedback.isCorrect && feedback.currentStreak > 1 && (
           <div className="flex items-center justify-center gap-2 text-orange-500">
             <Flame className="w-5 h-5" />
@@ -536,6 +567,67 @@ function FeedbackScreen({
             {feedback.pointChange >= 0 ? '+' : ''}{feedback.pointChange} mastery points
           </span>
         </div>
+
+        {/* See what I chose last time - only show when correct and has previous attempts */}
+        {feedback.isCorrect && hasPreviousAttempts && (
+          <div className="space-y-3">
+            <button
+              onClick={() => setShowPreviousAttempts(!showPreviousAttempts)}
+              className="text-sm text-[var(--grass-dark)] hover:underline flex items-center justify-center gap-1 mx-auto"
+            >
+              {showPreviousAttempts ? (
+                <>
+                  <ChevronUp className="w-4 h-4" />
+                  Hide previous attempts
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4" />
+                  See what I chose last time
+                </>
+              )}
+            </button>
+
+            {showPreviousAttempts && previousAttempts && (
+              <div className="bg-[var(--paper-aged)] rounded-xl p-4 text-left space-y-2">
+                <p className="text-xs text-[var(--ink-faded)] font-medium uppercase tracking-wide">
+                  Previous Attempts
+                </p>
+                <div className="space-y-2">
+                  {previousAttempts.attempts.map((attempt: { selectedAnswer?: string; isCorrect?: boolean; submittedAt?: number }, index: number) => (
+                    <div
+                      key={index}
+                      className={`flex items-center justify-between p-2 rounded-lg ${
+                        attempt.isCorrect
+                          ? 'bg-green-50 border border-green-200'
+                          : 'bg-red-50 border border-red-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {attempt.isCorrect ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        )}
+                        <span className="text-sm font-medium">
+                          Chose: {attempt.selectedAnswer}
+                        </span>
+                      </div>
+                      <span className="text-xs text-[var(--ink-faded)]">
+                        {attempt.submittedAt
+                          ? new Date(attempt.submittedAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                            })
+                          : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <button
           onClick={onNext}
@@ -758,6 +850,9 @@ function PlayingScreen({
       currentStreak: result.currentStreak,
       pointChange: result.pointChange,
       masteryLevel: result.masteryLevel as MasteryLevel,
+      questionId: currentQuestion.question._id,
+      visitorId,
+      attemptId: attemptId as string,
     });
   }, [
     selectedAnswer,

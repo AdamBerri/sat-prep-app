@@ -76,13 +76,14 @@ export type ChartData =
  */
 const BASE_STYLING = `
 Style requirements:
-- Clean, professional appearance like a standardized test
-- White background with subtle gray gridlines
-- Black text and axes, dark gray bars/lines
+- Render as a flat digital vector illustration, NOT a photograph of a test paper
+- Pure white background with subtle gray gridlines
+- Crisp black text and axes, solid dark gray bars/lines
 - Clear, readable labels with appropriate font size
-- No 3D effects, shadows, or decorative elements
+- No 3D effects, shadows, paper texture, or photorealistic elements
 - Include the title at the top
-- If there's a source, show it in small text at bottom`;
+- If there's a source, show it in small text at bottom
+- Print-ready educational graphic style`;
 
 /**
  * Generate prompt for a simple bar chart.
@@ -95,7 +96,7 @@ export function buildBarChartPrompt(data: BarChartData): string {
     .map((cat, i) => `"${cat}": ${data.values[i]}${data.unit === "%" ? "%" : ""}`)
     .join(", ");
 
-  return `Create an SAT-style vertical bar chart.
+  return `Create an SAT-style vertical bar chart as a flat digital vector illustration.
 
 Title: "${data.title}"
 
@@ -132,7 +133,7 @@ export function buildMultiSeriesBarChartPrompt(
     })
     .join("\n");
 
-  return `Create an SAT-style grouped bar chart with ${data.series.length} series.
+  return `Create an SAT-style grouped bar chart as a flat digital vector illustration with ${data.series.length} series.
 
 Title: "${data.title}"
 
@@ -170,7 +171,7 @@ export function buildLineGraphPrompt(data: LineGraphData): string {
     })
     .join("\n");
 
-  return `Create an SAT-style line graph with ${data.series.length} line${data.series.length > 1 ? "s" : ""}.
+  return `Create an SAT-style line graph as a flat digital vector illustration with ${data.series.length} line${data.series.length > 1 ? "s" : ""}.
 
 Title: "${data.title}"
 
@@ -194,7 +195,7 @@ export function buildDataTablePrompt(data: DataTableData): string {
     .map((row) => `${row.label}: ${row.values.join(" | ")}`)
     .join("\n");
 
-  return `Create an SAT-style data table.
+  return `Create an SAT-style data table as a flat digital vector illustration.
 
 Title: "${data.title}"
 
@@ -207,9 +208,9 @@ Table requirements:
 - Clean black borders around all cells
 - Header row should be slightly shaded or bold
 - All numbers should be clearly legible
-- Professional, standardized test appearance
-- White background
+- Pure white background with crisp lines
 - Proper alignment (text left, numbers right)
+- Print-ready graphic, not a photograph - no paper texture or shadows
 ${data.source ? `\nSource attribution below table: "${data.source}"` : ""}`;
 }
 
