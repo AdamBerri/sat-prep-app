@@ -10,16 +10,34 @@
 // ─────────────────────────────────────────────────────────
 
 /**
- * SAT Reading question types based on College Board categories.
+ * SAT Reading & Writing question types based on College Board categories.
  * Distribution based on actual SAT patterns.
+ * Updated to include all 11 official question types across 4 domains.
  */
 export const QUESTION_TYPES = [
-  "central_ideas", // Main point/purpose (15%)
-  "inferences", // What can be inferred (15%)
+  // Domain 1: Information and Ideas (26%)
+  "central_ideas", // Main point/purpose (12%)
+  "inferences", // What can be inferred (12%)
+  "command_of_evidence", // Which quote supports claim (textual + quantitative) (12%)
+
+  // Domain 2: Craft and Structure (28%)
   "vocabulary_in_context", // Word/phrase meaning (10%)
-  "text_structure", // Function of paragraph/sentence (10%)
-  "command_of_evidence", // Which quote supports claim (25%)
-  "rhetorical_synthesis", // Complete text with evidence (10%)
+  "text_structure", // Function of paragraph/sentence (13%)
+  "cross_text_connections", // Relationship between two texts (5%)
+
+  // Domain 3: Expression of Ideas (20%)
+  "rhetorical_synthesis", // Complete text with evidence (13%)
+  "transitions", // Effective transition word/phrase (7%)
+
+  // Domain 4: Standard English Conventions (26%)
+  "boundaries_between_sentences", // Sentence-ending punctuation (6%)
+  "boundaries_within_sentences", // Clauses, series, appositives (7%)
+  "subject_verb_agreement", // Subject-verb agreement (3%)
+  "pronoun_antecedent_agreement", // Pronoun-antecedent agreement (3%)
+  "verb_finiteness", // Verbs vs. verbals (2%)
+  "verb_tense_aspect", // Verb tense and aspect (3%)
+  "subject_modifier_placement", // Modifier placement (1%)
+  "genitives_plurals", // Possessives and plurals (1%)
 ] as const;
 
 export type QuestionType = (typeof QUESTION_TYPES)[number];
@@ -27,15 +45,32 @@ export type QuestionType = (typeof QUESTION_TYPES)[number];
 /**
  * Approximate distribution of question types on the SAT.
  * Used for batch generation to match real test proportions.
+ * Percentages based on College Board's official SAT Reading & Writing distribution.
  */
 export const QUESTION_TYPE_DISTRIBUTION: Record<QuestionType, number> = {
-  command_of_evidence: 0.25,
-  central_ideas: 0.15,
-  inferences: 0.15,
+  // Domain 1: Information and Ideas (26% of R&W section)
+  central_ideas: 0.12,
+  inferences: 0.12,
+  command_of_evidence: 0.12, // Includes both textual and quantitative
+
+  // Domain 2: Craft and Structure (28%)
   vocabulary_in_context: 0.10,
-  text_structure: 0.10,
-  rhetorical_synthesis: 0.10,
-  // Note: 15% is quantitative evidence, handled by readingDataGeneration.ts
+  text_structure: 0.13,
+  cross_text_connections: 0.05,
+
+  // Domain 3: Expression of Ideas (20%)
+  rhetorical_synthesis: 0.13,
+  transitions: 0.07,
+
+  // Domain 4: Standard English Conventions (26%)
+  boundaries_between_sentences: 0.06,
+  boundaries_within_sentences: 0.07,
+  subject_verb_agreement: 0.03,
+  pronoun_antecedent_agreement: 0.03,
+  verb_finiteness: 0.02,
+  verb_tense_aspect: 0.03,
+  subject_modifier_placement: 0.01,
+  genitives_plurals: 0.01,
 };
 
 // ─────────────────────────────────────────────────────────
@@ -187,9 +222,10 @@ export type PassageLength = (typeof READING_QUESTION_PARAMS.passageLengths)[numb
 
 /**
  * Strategies for generating plausible but incorrect answer choices.
- * Each describes a common reading comprehension error.
+ * Includes strategies for reading comprehension AND grammar/conventions questions.
  */
 export const READING_DISTRACTOR_STRATEGIES = {
+  // Reading comprehension distractor strategies
   too_broad:
     "Answer is technically true but too general. It could apply to many passages and doesn't specifically address the question. Missing the precise focus.",
 
@@ -219,6 +255,34 @@ export const READING_DISTRACTOR_STRATEGIES = {
 
   temporal_confusion:
     "Answer confuses sequence of events, or attributes to one time period what belongs to another.",
+
+  // Grammar/conventions distractor strategies (Domain 4)
+  wrong_punctuation:
+    "Uses incorrect punctuation mark (comma instead of semicolon, period instead of comma, etc.). Common punctuation confusion.",
+
+  comma_splice:
+    "Incorrectly joins two independent clauses with just a comma. Classic run-on sentence error.",
+
+  wrong_verb_form:
+    "Uses wrong verb form (singular/plural, wrong tense, infinitive instead of gerund, etc.). Grammatically incorrect.",
+
+  wrong_pronoun:
+    "Uses incorrect pronoun (their instead of its, who instead of whom, wrong case, etc.). Pronoun agreement or case error.",
+
+  misplaced_modifier:
+    "Modifier in wrong position, creating unclear or illogical meaning. Modifier placement issue.",
+
+  wrong_word_form:
+    "Uses wrong form of word (possessive instead of plural, plural instead of possessive, etc.). Its/it's, their/there/they're confusion.",
+
+  unnecessary_punctuation:
+    "Adds punctuation where none is needed. Over-punctuation error.",
+
+  wrong_transition:
+    "Uses transition that indicates wrong logical relationship (contrast instead of addition, cause instead of example, etc.).",
+
+  wordy_redundant:
+    "Unnecessarily wordy or redundant version of the correct answer. Less concise.",
 } as const;
 
 export type DistractorStrategy = keyof typeof READING_DISTRACTOR_STRATEGIES;
@@ -227,6 +291,7 @@ export type DistractorStrategy = keyof typeof READING_DISTRACTOR_STRATEGIES;
  * Effective combinations of distractor strategies for different question types.
  */
 export const DISTRACTOR_COMBOS_BY_TYPE: Record<QuestionType, DistractorStrategy[][]> = {
+  // Domain 1: Information and Ideas
   central_ideas: [
     ["too_broad", "too_narrow", "opposite_meaning"],
     ["partial_answer", "too_narrow", "unsupported_inference"],
@@ -237,6 +302,13 @@ export const DISTRACTOR_COMBOS_BY_TYPE: Record<QuestionType, DistractorStrategy[
     ["plausible_but_wrong", "extreme_position", "wrong_scope"],
     ["unsupported_inference", "partial_answer", "too_broad"],
   ],
+  command_of_evidence: [
+    ["wrong_scope", "partial_answer", "opposite_meaning"],
+    ["too_narrow", "unsupported_inference", "plausible_but_wrong"],
+    ["wrong_scope", "too_broad", "partial_answer"],
+  ],
+
+  // Domain 2: Craft and Structure
   vocabulary_in_context: [
     ["plausible_but_wrong", "too_broad", "opposite_meaning"],
     ["wrong_scope", "plausible_but_wrong", "unsupported_inference"],
@@ -245,14 +317,56 @@ export const DISTRACTOR_COMBOS_BY_TYPE: Record<QuestionType, DistractorStrategy[
     ["wrong_scope", "too_narrow", "opposite_meaning"],
     ["partial_answer", "plausible_but_wrong", "too_broad"],
   ],
-  command_of_evidence: [
-    ["wrong_scope", "partial_answer", "opposite_meaning"],
-    ["too_narrow", "unsupported_inference", "plausible_but_wrong"],
-    ["wrong_scope", "too_broad", "partial_answer"],
+  cross_text_connections: [
+    ["opposite_meaning", "partial_answer", "wrong_scope"],
+    ["plausible_but_wrong", "unsupported_inference", "too_narrow"],
+    ["misread_tone", "extreme_position", "opposite_meaning"],
   ],
+
+  // Domain 3: Expression of Ideas
   rhetorical_synthesis: [
     ["partial_answer", "opposite_meaning", "unsupported_inference"],
     ["plausible_but_wrong", "wrong_scope", "too_narrow"],
+  ],
+  transitions: [
+    ["wrong_transition", "opposite_meaning", "plausible_but_wrong"],
+    ["wrong_transition", "partial_answer", "too_narrow"],
+  ],
+
+  // Domain 4: Standard English Conventions - Boundaries
+  boundaries_between_sentences: [
+    ["comma_splice", "wrong_punctuation", "unnecessary_punctuation"],
+    ["wrong_punctuation", "comma_splice", "wordy_redundant"],
+  ],
+  boundaries_within_sentences: [
+    ["wrong_punctuation", "unnecessary_punctuation", "comma_splice"],
+    ["unnecessary_punctuation", "wrong_punctuation", "wordy_redundant"],
+  ],
+
+  // Domain 4: Standard English Conventions - Form, Structure, and Sense
+  subject_verb_agreement: [
+    ["wrong_verb_form", "plausible_but_wrong", "wordy_redundant"],
+    ["wrong_verb_form", "wrong_word_form", "plausible_but_wrong"],
+  ],
+  pronoun_antecedent_agreement: [
+    ["wrong_pronoun", "plausible_but_wrong", "wordy_redundant"],
+    ["wrong_pronoun", "wrong_word_form", "plausible_but_wrong"],
+  ],
+  verb_finiteness: [
+    ["wrong_verb_form", "plausible_but_wrong", "wordy_redundant"],
+    ["wrong_verb_form", "wrong_word_form", "unnecessary_punctuation"],
+  ],
+  verb_tense_aspect: [
+    ["wrong_verb_form", "plausible_but_wrong", "temporal_confusion"],
+    ["wrong_verb_form", "temporal_confusion", "wordy_redundant"],
+  ],
+  subject_modifier_placement: [
+    ["misplaced_modifier", "plausible_but_wrong", "wordy_redundant"],
+    ["misplaced_modifier", "wrong_scope", "plausible_but_wrong"],
+  ],
+  genitives_plurals: [
+    ["wrong_word_form", "plausible_but_wrong", "wordy_redundant"],
+    ["wrong_word_form", "wrong_pronoun", "plausible_but_wrong"],
   ],
 };
 

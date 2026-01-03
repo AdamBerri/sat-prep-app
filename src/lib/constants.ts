@@ -61,10 +61,10 @@ export const SECTIONS: PracticeSection[] = [
 // ============================================================================
 
 export const READING_WRITING_DOMAINS = [
-  "craft_and_structure",
-  "information_and_ideas",
-  "standard_english_conventions",
-  "expression_of_ideas",
+  "information_and_ideas", // Domain 1: Central Ideas, Inferences, Command of Evidence
+  "craft_and_structure", // Domain 2: Words in Context, Text Structure, Cross-Text
+  "expression_of_ideas", // Domain 3: Rhetorical Synthesis, Transitions
+  "standard_english_conventions", // Domain 4: Boundaries, Form/Structure/Sense
 ] as const;
 
 export const MATH_DOMAINS = [
@@ -75,10 +75,30 @@ export const MATH_DOMAINS = [
 ] as const;
 
 export const READING_WRITING_SKILLS = [
-  "vocabulary_in_context",
+  // Domain 1: Information and Ideas
   "central_ideas",
-  "command_of_evidence",
+  "inferences",
+  "command_of_evidence_textual",
+  "command_of_evidence_quantitative",
+
+  // Domain 2: Craft and Structure
+  "vocabulary_in_context",
+  "text_structure",
+  "cross_text_connections",
+
+  // Domain 3: Expression of Ideas
   "rhetorical_synthesis",
+  "transitions",
+
+  // Domain 4: Standard English Conventions
+  "boundaries_between_sentences",
+  "boundaries_within_sentences",
+  "subject_verb_agreement",
+  "pronoun_antecedent_agreement",
+  "verb_finiteness",
+  "verb_tense_aspect",
+  "subject_modifier_placement",
+  "genitives_plurals",
 ] as const;
 
 export const MATH_SKILLS = [
