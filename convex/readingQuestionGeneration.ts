@@ -377,6 +377,7 @@ function mapQuestionTypeToDomainSkill(questionType: QuestionType): {
   skill: string;
 } {
   const mapping: Record<QuestionType, { domain: string; skill: string }> = {
+    // Domain 1: Information and Ideas
     central_ideas: {
       domain: "information_and_ideas",
       skill: "central_ideas",
@@ -385,21 +386,64 @@ function mapQuestionTypeToDomainSkill(questionType: QuestionType): {
       domain: "information_and_ideas",
       skill: "inferences",
     },
+    command_of_evidence: {
+      domain: "information_and_ideas",
+      skill: "command_of_evidence_textual",
+    },
+    // Domain 2: Craft and Structure
     vocabulary_in_context: {
       domain: "craft_and_structure",
       skill: "vocabulary_in_context",
     },
     text_structure: {
       domain: "craft_and_structure",
-      skill: "text_structure_and_purpose",
+      skill: "text_structure",
     },
-    command_of_evidence: {
-      domain: "information_and_ideas",
-      skill: "command_of_evidence",
-    },
-    rhetorical_synthesis: {
+    cross_text_connections: {
       domain: "craft_and_structure",
+      skill: "cross_text_connections",
+    },
+    // Domain 3: Expression of Ideas
+    rhetorical_synthesis: {
+      domain: "expression_of_ideas",
       skill: "rhetorical_synthesis",
+    },
+    transitions: {
+      domain: "expression_of_ideas",
+      skill: "transitions",
+    },
+    // Domain 4: Standard English Conventions (handled in grammarQuestionGeneration.ts)
+    boundaries_between_sentences: {
+      domain: "standard_english_conventions",
+      skill: "boundaries_between_sentences",
+    },
+    boundaries_within_sentences: {
+      domain: "standard_english_conventions",
+      skill: "boundaries_within_sentences",
+    },
+    subject_verb_agreement: {
+      domain: "standard_english_conventions",
+      skill: "subject_verb_agreement",
+    },
+    pronoun_antecedent_agreement: {
+      domain: "standard_english_conventions",
+      skill: "pronoun_antecedent_agreement",
+    },
+    verb_finiteness: {
+      domain: "standard_english_conventions",
+      skill: "verb_finiteness",
+    },
+    verb_tense_aspect: {
+      domain: "standard_english_conventions",
+      skill: "verb_tense_aspect",
+    },
+    subject_modifier_placement: {
+      domain: "standard_english_conventions",
+      skill: "subject_modifier_placement",
+    },
+    genitives_plurals: {
+      domain: "standard_english_conventions",
+      skill: "genitives_plurals",
     },
   };
 
