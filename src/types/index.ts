@@ -137,6 +137,7 @@ export interface Question {
   prompt: string;
   passageId?: Id<"passages">;
   passage?: Passage | null;
+  passage2?: Passage | null; // For cross-text questions
   lineReference?: {
     start: number;
     end: number;
