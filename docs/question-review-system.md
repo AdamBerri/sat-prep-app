@@ -79,7 +79,18 @@ When the review finds issues, the system can **automatically fix** certain types
 These require manual intervention:
 - `too_hard` - Needs domain expertise to simplify
 - Question doesn't match passage - Needs regeneration
-- Figure/graph mismatch - Needs visual regeneration
+- Image issues (see below) - Needs visual regeneration
+
+### Image-Specific Issue Types
+
+These issues are detected through multimodal image verification and require regeneration:
+
+| Issue Type | Description | Action Required |
+|------------|-------------|-----------------|
+| `image_label_error` | Duplicate labels (e.g., two points named "A"), missing labels, or misplaced labels | Regenerate image |
+| `image_text_mismatch` | Image doesn't match what the question stem describes | Regenerate image |
+| `image_quality_issue` | Blurry, incomplete, or malformed image | Regenerate image |
+| `image_data_mismatch` | Graph/chart data values don't match described values | Regenerate image |
 
 ### Improvement Flow
 
@@ -306,6 +317,7 @@ await ctx.runAction(internal.questionReview.reviewUnverifiedQuestions, {
 1. **Answer Validation**: Is the marked correct answer actually correct?
 2. **Distractor Quality**: Are wrong answers plausibly wrong?
 3. **Question Clarity**: Is the question unambiguous?
+4. **Image Verification** (for questions with figures): Are labels unique? Does the image match the question?
 
 #### What the Review Produces
 
@@ -466,7 +478,30 @@ commonMistakes: [
 
 These are stored in the `explanations` table and can be shown to students after they answer incorrectly.
 
-## Special Handling for Graphing Questions
+## Image Verification (Multimodal Review)
+
+Questions with figures/images are verified using **multimodal review** - the actual image is sent to Claude for visual inspection, not just a text description.
+
+### How It Works
+
+1. **Image Fetch**: When a question has a figure, the image is fetched from Convex storage
+2. **Base64 Encoding**: The image is converted to base64 for the Claude API
+3. **Multimodal Request**: Both the image and text prompt are sent to Claude
+4. **Visual Inspection**: Claude analyzes the image for issues like duplicate labels, incorrect graphs, etc.
+
+### What Image Verification Checks
+
+```
+IMAGE VERIFICATION CHECKLIST:
+1. LABELS: Are all point/vertex labels (A, B, C, etc.) unique and correctly placed?
+2. NO DUPLICATES: Check that no label appears twice on the diagram
+3. GRAPH ACCURACY: Does the graph/diagram match the equation or values described?
+4. TEXT ALIGNMENT: Does the image accurately represent what the question describes?
+5. VISUAL CLARITY: Is the image clear, complete, and properly rendered?
+6. DATA ACCURACY: For charts/tables, do the visual values match the described values?
+```
+
+### Prioritizing Image Questions
 
 Graphing questions (questions with figures/charts) are prioritized for review because they're more likely to have generation issues:
 
@@ -477,13 +512,12 @@ await ctx.runAction(internal.questionReview.reviewUnverifiedQuestions, {
 });
 ```
 
-The review prompt includes special warnings for graphing questions:
+### Fallback for Image Fetch Failures
 
-```
-WARNING: This question includes a figure/graph. Pay special attention to:
-- Whether the marked answer aligns with what the figure should show
-- Potential mismatches between question and visual representation
-```
+If an image cannot be fetched from storage:
+- A warning is logged
+- Review continues with text-only verification
+- The question is NOT rejected solely because the image couldn't be fetched
 
 ## Admin Operations
 

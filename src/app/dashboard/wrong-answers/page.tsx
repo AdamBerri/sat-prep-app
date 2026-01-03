@@ -16,6 +16,8 @@ import {
   Target,
   TrendingUp,
   RefreshCw,
+  Lightbulb,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -164,7 +166,7 @@ export default function WrongAnswersPage() {
           </div>
         ) : (
           // Questions list
-          wrongAnswersData.wrongAnswers.map((item) => (
+          wrongAnswersData.wrongAnswers.map((item: WrongAnswerItem) => (
             <WrongAnswerCard
               key={item.answerId}
               item={item}
@@ -206,6 +208,20 @@ interface WrongAnswerItem {
   mode?: string;
   hasImproved: boolean;
   totalAttempts: number;
+  explanation?: {
+    correctExplanation: string;
+    wrongAnswerExplanations?: {
+      A?: string;
+      B?: string;
+      C?: string;
+      D?: string;
+    };
+    commonMistakes?: Array<{
+      reason: string;
+      description: string;
+      relatedSkill?: string;
+    }>;
+  } | null;
 }
 
 function WrongAnswerCard({
@@ -365,6 +381,81 @@ function WrongAnswerCard({
                 })}
               </div>
             </div>
+
+            {/* Explanation */}
+            {item.explanation && (
+              <div className="space-y-4">
+                {/* Why the correct answer is right */}
+                <div className="bg-[var(--grass-light)]/10 border border-[var(--grass-medium)]/30 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Lightbulb className="w-5 h-5 text-[var(--grass-dark)] flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h5 className="font-display font-semibold text-[var(--grass-dark)] mb-1">
+                        Why {item.correctAnswer} is correct
+                      </h5>
+                      <p className="font-body text-sm text-[var(--ink-black)]">
+                        {item.explanation.correctExplanation}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Why your answer was wrong */}
+                {item.selectedAnswer &&
+                  item.selectedAnswer !== item.correctAnswer &&
+                  item.explanation.wrongAnswerExplanations?.[
+                    item.selectedAnswer as "A" | "B" | "C" | "D"
+                  ] && (
+                    <div className="bg-[var(--barn-red)]/5 border border-[var(--barn-red)]/20 rounded-xl p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-[var(--barn-red)] flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h5 className="font-display font-semibold text-[var(--barn-red)] mb-1">
+                            Why {item.selectedAnswer} is incorrect
+                          </h5>
+                          <p className="font-body text-sm text-[var(--ink-black)]">
+                            {
+                              item.explanation.wrongAnswerExplanations[
+                                item.selectedAnswer as "A" | "B" | "C" | "D"
+                              ]
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                {/* Common mistakes */}
+                {item.explanation.commonMistakes &&
+                  item.explanation.commonMistakes.length > 0 && (
+                    <div className="bg-[var(--sunflower)]/10 border border-[var(--sunflower)]/30 rounded-xl p-4">
+                      <h5 className="font-display font-semibold text-[var(--ink-black)] mb-2 flex items-center gap-2">
+                        <Target className="w-4 h-4 text-orange-500" />
+                        Common Mistakes
+                      </h5>
+                      <ul className="space-y-2">
+                        {item.explanation.commonMistakes.map((mistake, idx) => (
+                          <li
+                            key={idx}
+                            className="font-body text-sm text-[var(--ink-black)]"
+                          >
+                            {mistake.description}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+              </div>
+            )}
+
+            {/* No explanation available */}
+            {!item.explanation && (
+              <div className="bg-[var(--paper-aged)] rounded-xl p-4 text-center">
+                <p className="font-body text-sm text-[var(--ink-faded)]">
+                  No explanation available yet. This question is pending review.
+                </p>
+              </div>
+            )}
 
             {/* Stats */}
             <div className="flex flex-wrap gap-4 pt-2 text-sm font-body text-[var(--ink-faded)]">

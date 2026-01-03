@@ -770,6 +770,71 @@ export default defineSchema({
     .index("by_batch_id", ["batchId"]),
 
   // ─────────────────────────────────────────────────────────
+  // MATH QUESTION DLQ (Dead Letter Queue for math question failures)
+  // ─────────────────────────────────────────────────────────
+  mathQuestionDLQ: defineTable({
+    // Domain and skill
+    domain: v.union(
+      v.literal("algebra"),
+      v.literal("advanced_math"),
+      v.literal("problem_solving"),
+      v.literal("geometry_trig")
+    ),
+    skill: v.string(),
+    // Sampled parameters
+    sampledParams: v.object({
+      domain: v.string(),
+      skill: v.string(),
+      contextType: v.string(),
+      figureType: v.string(),
+      reasoningSteps: v.number(),
+      algebraicComplexity: v.number(),
+      conceptualDepth: v.number(),
+      computationLoad: v.number(),
+      multiStepRequired: v.number(),
+      wordProblemComplexity: v.number(),
+      distractorStrategies: v.array(v.string()),
+      targetOverallDifficulty: v.number(),
+    }),
+    // Generated problem data (if problem generation succeeded)
+    problemData: v.optional(
+      v.object({
+        problemText: v.string(),
+        correctAnswer: v.string(),
+        solutionSteps: v.array(v.string()),
+      })
+    ),
+    // Batch info
+    batchId: v.optional(v.string()),
+    // Error info
+    error: v.string(),
+    errorStage: v.union(
+      v.literal("problem_generation"),
+      v.literal("figure_generation"),
+      v.literal("question_generation"),
+      v.literal("storage")
+    ),
+    // Retry tracking
+    retryCount: v.number(),
+    maxRetries: v.number(),
+    lastAttemptAt: v.number(),
+    // Status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("retrying"),
+      v.literal("succeeded"),
+      v.literal("failed_permanently")
+    ),
+    // Result (if retry succeeded)
+    imageId: v.optional(v.id("images")),
+    questionId: v.optional(v.id("questions")),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_batch_id", ["batchId"]),
+
+  // ─────────────────────────────────────────────────────────
   // QUESTION PERFORMANCE STATS (for tracking student error rates per question)
   // ─────────────────────────────────────────────────────────
   questionPerformanceStats: defineTable({

@@ -31,6 +31,8 @@ import {
   Leaf,
   TrendingUp,
   Award,
+  Lightbulb,
+  AlertCircle,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────
@@ -504,6 +506,7 @@ function FeedbackScreen({
   onNext: () => void;
 }) {
   const [showPreviousAttempts, setShowPreviousAttempts] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(!feedback.isCorrect); // Auto-expand for wrong answers
 
   // Query for previous attempts on this question
   const previousAttempts = useQuery(api.progressTracking.getPreviousAttempts, {
@@ -512,25 +515,36 @@ function FeedbackScreen({
     excludeAttemptId: feedback.attemptId as Id<"examAttempts">,
   });
 
+  // Query for explanation
+  const explanation = useQuery(api.progressTracking.getQuestionExplanation, {
+    questionId: feedback.questionId as Id<"questions">,
+  });
+
   // Check if user improved (got it right now, was wrong before)
   const hasImproved = feedback.isCorrect && previousAttempts?.hasWrongAttempt;
   const hasPreviousAttempts = previousAttempts && previousAttempts.totalAttempts > 0;
+  const hasExplanation = explanation && (explanation.correctExplanation || explanation.wrongAnswerExplanations);
+
+  // Get the wrong answer explanation for user's selected answer
+  const wrongAnswerExplanation = !feedback.isCorrect && explanation?.wrongAnswerExplanations
+    ? explanation.wrongAnswerExplanations[feedback.selectedAnswer as keyof typeof explanation.wrongAnswerExplanations]
+    : null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="card-paper max-w-sm w-full p-8 rounded-xl space-y-6 text-center animate-in fade-in zoom-in duration-200">
-        <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto ${
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="card-paper max-w-md w-full p-6 sm:p-8 rounded-xl space-y-5 text-center animate-in fade-in zoom-in duration-200 my-4">
+        <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto ${
           feedback.isCorrect ? 'bg-green-100' : 'bg-red-100'
         }`}>
           {feedback.isCorrect ? (
-            <CheckCircle2 className="w-10 h-10 text-green-600" />
+            <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
           ) : (
-            <XCircle className="w-10 h-10 text-red-500" />
+            <XCircle className="w-8 h-8 sm:w-10 sm:h-10 text-red-500" />
           )}
         </div>
 
         <div>
-          <h2 className={`font-display text-2xl font-bold mb-2 ${
+          <h2 className={`font-display text-xl sm:text-2xl font-bold mb-2 ${
             feedback.isCorrect ? 'text-green-600' : 'text-red-500'
           }`}>
             {feedback.isCorrect ? 'Correct!' : 'Incorrect'}
@@ -567,6 +581,78 @@ function FeedbackScreen({
             {feedback.pointChange >= 0 ? '+' : ''}{feedback.pointChange} mastery points
           </span>
         </div>
+
+        {/* Explanation section */}
+        {hasExplanation && (
+          <div className="space-y-3">
+            <button
+              onClick={() => setShowExplanation(!showExplanation)}
+              className="text-sm text-[var(--sky-blue)] hover:underline flex items-center justify-center gap-1 mx-auto"
+            >
+              {showExplanation ? (
+                <>
+                  <ChevronUp className="w-4 h-4" />
+                  Hide explanation
+                </>
+              ) : (
+                <>
+                  <Lightbulb className="w-4 h-4" />
+                  Show explanation
+                </>
+              )}
+            </button>
+
+            {showExplanation && (
+              <div className="space-y-3 text-left">
+                {/* Why the correct answer is correct */}
+                {explanation?.correctExplanation && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <Lightbulb className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-green-700 uppercase tracking-wide mb-1">
+                          Why {feedback.correctAnswer} is correct
+                        </p>
+                        <p className="text-sm text-green-800 leading-relaxed">
+                          {explanation.correctExplanation}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Why user's answer was wrong (only for incorrect answers) */}
+                {!feedback.isCorrect && wrongAnswerExplanation && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-red-700 uppercase tracking-wide mb-1">
+                          Why {feedback.selectedAnswer} is incorrect
+                        </p>
+                        <p className="text-sm text-red-800 leading-relaxed">
+                          {wrongAnswerExplanation}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Common mistakes */}
+                {!feedback.isCorrect && explanation?.commonMistakes && explanation.commonMistakes.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+                    <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">
+                      Common Mistake
+                    </p>
+                    <p className="text-sm text-amber-800 leading-relaxed">
+                      {explanation.commonMistakes[0].description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* See what I chose last time - only show when correct and has previous attempts */}
         {feedback.isCorrect && hasPreviousAttempts && (
@@ -1040,7 +1126,7 @@ function PlayingScreen({
 
             {/* Answer options */}
             <div className="space-y-3">
-              {question.options.map((option) => {
+              {question.options.map((option: { key: string; content: string }) => {
                 const isSelected = selectedAnswer === option.key;
 
                 return (

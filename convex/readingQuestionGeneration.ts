@@ -488,14 +488,17 @@ export const batchGenerateReadingQuestions = internalAction({
       )
     ),
     batchId: v.optional(v.string()),
+    concurrency: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const batchId = args.batchId ?? `reading-${Date.now()}`;
+    const CONCURRENCY = args.concurrency ?? 5;
 
     console.log(
       `\nStarting batch generation of ${args.count} reading questions...`
     );
     console.log(`  Batch ID: ${batchId}`);
+    console.log(`  Concurrency: ${CONCURRENCY}`);
     if (args.questionTypes) {
       console.log(`  Question types: ${args.questionTypes.join(", ")}`);
     }
@@ -504,6 +507,30 @@ export const batchGenerateReadingQuestions = internalAction({
     }
 
     const anthropic = getAnthropicClient();
+
+    // Pre-generate all question parameters upfront
+    const questionParams: Array<{
+      index: number;
+      params: SampledReadingParams;
+    }> = [];
+
+    for (let i = 0; i < args.count; i++) {
+      let questionType: QuestionType | undefined;
+      if (args.questionTypes && args.questionTypes.length > 0) {
+        questionType = args.questionTypes[i % args.questionTypes.length] as QuestionType;
+      }
+
+      const params = sampleReadingQuestionParams({
+        questionType,
+        passageType: args.passageTypes
+          ? (args.passageTypes[i % args.passageTypes.length] as SampledReadingParams["passageType"])
+          : undefined,
+      });
+
+      questionParams.push({ index: i, params });
+    }
+
+    console.log(`\nPre-generated ${questionParams.length} question parameters`);
 
     const results: Array<{
       index: number;
@@ -514,86 +541,85 @@ export const batchGenerateReadingQuestions = internalAction({
       error?: string;
     }> = [];
 
-    for (let i = 0; i < args.count; i++) {
-      // Determine question type for this iteration
-      let questionType: QuestionType | undefined;
-      if (args.questionTypes && args.questionTypes.length > 0) {
-        // Rotate through specified types
-        questionType = args.questionTypes[i % args.questionTypes.length] as QuestionType;
-      }
+    // Process in concurrent batches
+    for (let batchStart = 0; batchStart < questionParams.length; batchStart += CONCURRENCY) {
+      const batch = questionParams.slice(batchStart, batchStart + CONCURRENCY);
+      const batchEnd = Math.min(batchStart + CONCURRENCY, questionParams.length);
 
-      // Sample fresh parameters for each question
-      const params = sampleReadingQuestionParams({
-        questionType,
-        passageType: args.passageTypes
-          ? (args.passageTypes[i % args.passageTypes.length] as SampledReadingParams["passageType"])
-          : undefined,
-      });
+      console.log(`\n[Batch ${Math.floor(batchStart / CONCURRENCY) + 1}/${Math.ceil(questionParams.length / CONCURRENCY)}] Processing questions ${batchStart + 1}-${batchEnd}...`);
 
-      console.log(`\n[${i + 1}/${args.count}] Generating ${params.questionType} (${params.passageType})...`);
-      console.log(`  Sampled params:`, {
-        passageComplexity: params.passageComplexity.toFixed(2),
-        inferenceDepth: params.inferenceDepth.toFixed(2),
-        distractorStrategies: params.distractorStrategies,
-      });
+      // Generate all questions in this batch concurrently
+      const batchResults = await Promise.all(
+        batch.map(async ({ index, params }) => {
+          console.log(`  [${index + 1}/${args.count}] Starting ${params.questionType} (${params.passageType})...`);
 
-      const result = await generateSingleQuestion(ctx, anthropic, params, batchId);
+          const result = await generateSingleQuestion(ctx, anthropic, params, batchId);
 
-      if (result.success) {
-        results.push({
-          index: i,
-          success: true,
-          questionId: result.questionId?.toString(),
-          questionType: params.questionType,
-          passageType: params.passageType,
-        });
-      } else {
-        // Add to DLQ for retry
-        console.log(`  Adding to DLQ for retry...`);
-        try {
-          await ctx.runMutation(internal.readingQuestionDLQ.addToDLQ, {
+          return { index, params, result };
+        })
+      );
+
+      // Process results from this batch
+      for (const { index, params, result } of batchResults) {
+        if (result.success) {
+          console.log(`  [${index + 1}] ✓ Success`);
+          results.push({
+            index,
+            success: true,
+            questionId: result.questionId?.toString(),
             questionType: params.questionType,
             passageType: params.passageType,
-            sampledParams: {
-              questionType: params.questionType,
-              questionFocus: params.questionFocus,
-              passageType: params.passageType,
-              passageLength: params.passageLength,
-              passageComplexity: params.passageComplexity,
-              inferenceDepth: params.inferenceDepth,
-              vocabularyLevel: params.vocabularyLevel,
-              evidenceEvaluation: params.evidenceEvaluation,
-              synthesisRequired: params.synthesisRequired,
-              distractorStrategies: params.distractorStrategies,
-              targetOverallDifficulty: params.targetOverallDifficulty,
-            },
-            passageData: result.passage
-              ? {
-                  passage: result.passage.passage,
-                  title: result.passage.title,
-                  author: result.passage.author,
-                  mainIdea: result.passage.mainIdea,
-                }
-              : undefined,
-            batchId,
-            error: result.error ?? "Unknown error",
-            errorStage: result.errorStage ?? "passage_generation",
           });
-        } catch (dlqError) {
-          console.error("  Failed to add to DLQ:", dlqError);
-        }
+        } else {
+          console.log(`  [${index + 1}] ✗ Failed: ${result.error}`);
+          // Add to DLQ for retry
+          try {
+            await ctx.runMutation(internal.readingQuestionDLQ.addToDLQ, {
+              questionType: params.questionType,
+              passageType: params.passageType,
+              sampledParams: {
+                questionType: params.questionType,
+                questionFocus: params.questionFocus,
+                passageType: params.passageType,
+                passageLength: params.passageLength,
+                passageComplexity: params.passageComplexity,
+                inferenceDepth: params.inferenceDepth,
+                vocabularyLevel: params.vocabularyLevel,
+                evidenceEvaluation: params.evidenceEvaluation,
+                synthesisRequired: params.synthesisRequired,
+                distractorStrategies: params.distractorStrategies,
+                targetOverallDifficulty: params.targetOverallDifficulty,
+              },
+              passageData: result.passage
+                ? {
+                    passage: result.passage.passage,
+                    title: result.passage.title,
+                    author: result.passage.author,
+                    mainIdea: result.passage.mainIdea,
+                  }
+                : undefined,
+              batchId,
+              error: result.error ?? "Unknown error",
+              errorStage: result.errorStage ?? "passage_generation",
+            });
+          } catch (dlqError) {
+            console.error(`  [${index + 1}] Failed to add to DLQ:`, dlqError);
+          }
 
-        results.push({
-          index: i,
-          success: false,
-          questionType: params.questionType,
-          passageType: params.passageType,
-          error: result.error,
-        });
+          results.push({
+            index,
+            success: false,
+            questionType: params.questionType,
+            passageType: params.passageType,
+            error: result.error,
+          });
+        }
       }
 
-      // Rate limiting between questions
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Short delay between batches to respect API rate limits
+      if (batchStart + CONCURRENCY < questionParams.length) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
     }
 
     // Summary

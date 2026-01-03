@@ -459,3 +459,75 @@ export const getOfficialQuestionStats = action({
     return stats;
   },
 });
+
+// ─────────────────────────────────────────────────────────
+// AI-GENERATED MATH QUESTIONS
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Test action to generate a single math question.
+ * This is a public action for testing the pipeline.
+ */
+export const testGenerateMathQuestion = action({
+  args: {
+    domain: v.optional(
+      v.union(
+        v.literal("algebra"),
+        v.literal("advanced_math"),
+        v.literal("problem_solving"),
+        v.literal("geometry_trig")
+      )
+    ),
+    skill: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<unknown> => {
+    console.log(`Testing math question generation...`);
+    if (args.domain) console.log(`  Domain: ${args.domain}`);
+    if (args.skill) console.log(`  Skill: ${args.skill}`);
+
+    const result = await ctx.runAction(
+      internal.mathQuestionGeneration.generateMathQuestion,
+      {
+        domain: args.domain,
+        skill: args.skill,
+        batchId: "test-batch",
+      }
+    );
+
+    return result;
+  },
+});
+
+/**
+ * Batch generate math questions.
+ */
+export const batchGenerateMathQuestions = action({
+  args: {
+    count: v.number(),
+    domains: v.optional(
+      v.array(
+        v.union(
+          v.literal("algebra"),
+          v.literal("advanced_math"),
+          v.literal("problem_solving"),
+          v.literal("geometry_trig")
+        )
+      )
+    ),
+    skills: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args): Promise<unknown> => {
+    console.log(`Batch generating ${args.count} math questions...`);
+
+    const result = await ctx.runAction(
+      internal.mathQuestionGeneration.batchGenerateMathQuestions,
+      {
+        count: args.count,
+        domains: args.domains,
+        skills: args.skills,
+      }
+    );
+
+    return result;
+  },
+});

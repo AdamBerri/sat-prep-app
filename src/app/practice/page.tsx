@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type {
@@ -883,12 +884,12 @@ function ExamScreen({
       <header className="exam-header px-4 sm:px-6 py-3 sm:py-4 shadow-md">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-2 sm:gap-4">
-            <div className="flex items-center gap-2">
+            <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <Leaf className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
               <span className="font-display text-base sm:text-lg font-bold text-white hidden sm:block">
                 1600Club
               </span>
-            </div>
+            </Link>
             <div className="h-6 w-px bg-white/20 hidden sm:block" />
             <span className="font-body text-xs sm:text-sm text-white/80">
               {currentIndex + 1} / {questions.length}

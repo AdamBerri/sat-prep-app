@@ -80,6 +80,12 @@ export const getWrongAnswers = query({
           .withIndex("by_question", (q) => q.eq("questionId", answer.questionId))
           .collect();
 
+        // Get explanation if available
+        const explanation = await ctx.db
+          .query("explanations")
+          .withIndex("by_question", (q) => q.eq("questionId", answer.questionId))
+          .first();
+
         // Check if user has since gotten this question right
         const allAttemptsOnQuestion = wrongAnswers.filter(
           (a) => a.questionId === answer.questionId
@@ -113,6 +119,14 @@ export const getWrongAnswers = query({
           // Improvement tracking
           hasImproved,
           totalAttempts: allAttemptsOnQuestion.length + correctAttempts.length,
+          // Explanation
+          explanation: explanation
+            ? {
+                correctExplanation: explanation.correctExplanation,
+                wrongAnswerExplanations: explanation.wrongAnswerExplanations,
+                commonMistakes: explanation.commonMistakes,
+              }
+            : null,
         };
       })
     );
@@ -196,6 +210,36 @@ export const getPreviousAttempts = query({
       improved,
       hasWrongAttempt,
       hasCorrectAttempt,
+    };
+  },
+});
+
+// ─────────────────────────────────────────────────────────
+// GET EXPLANATION FOR A QUESTION
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Get explanation for a specific question.
+ * Used to show explanations in feedback screens.
+ */
+export const getQuestionExplanation = query({
+  args: {
+    questionId: v.id("questions"),
+  },
+  handler: async (ctx, args) => {
+    const explanation = await ctx.db
+      .query("explanations")
+      .withIndex("by_question", (q) => q.eq("questionId", args.questionId))
+      .first();
+
+    if (!explanation) {
+      return null;
+    }
+
+    return {
+      correctExplanation: explanation.correctExplanation,
+      wrongAnswerExplanations: explanation.wrongAnswerExplanations,
+      commonMistakes: explanation.commonMistakes,
     };
   },
 });

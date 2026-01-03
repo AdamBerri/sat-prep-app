@@ -1,10 +1,10 @@
 "use node";
 
-import { internalAction } from "./_generated/server";
+import { internalAction, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import Anthropic from "@anthropic-ai/sdk";
-import { Doc } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 
 // ─────────────────────────────────────────────────────────
 // CONSTANTS
@@ -23,6 +23,72 @@ function getAnthropicClient() {
     throw new Error("ANTHROPIC_API_KEY environment variable is required");
   }
   return new Anthropic({ apiKey });
+}
+
+// ─────────────────────────────────────────────────────────
+// IMAGE FETCH HELPER (for multimodal review)
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Detect image mime type from magic bytes.
+ */
+function detectImageMimeType(buffer: Buffer): string {
+  // Check magic bytes
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+    return "image/png";
+  }
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+    return "image/jpeg";
+  }
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) {
+    return "image/gif";
+  }
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
+    return "image/webp";
+  }
+  // Default to PNG if unknown
+  return "image/png";
+}
+
+/**
+ * Fetch an image from Convex storage and return as base64.
+ * Returns null if the image cannot be fetched.
+ */
+async function fetchImageAsBase64(
+  ctx: ActionCtx,
+  imageId: Id<"images">
+): Promise<{ base64: string; mimeType: string } | null> {
+  try {
+    // Get the image document
+    const image = await ctx.runQuery(internal.questionReviewMutations.getImageById, {
+      imageId,
+    });
+    if (!image?.storageId) {
+      console.log(`  Image ${imageId} not found or has no storageId`);
+      return null;
+    }
+
+    // Fetch the blob from storage
+    const blob = await ctx.storage.get(image.storageId);
+    if (!blob) {
+      console.log(`  Could not fetch blob for image ${imageId}`);
+      return null;
+    }
+
+    // Convert to base64
+    const arrayBuffer = await blob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64 = buffer.toString("base64");
+
+    // Detect actual mime type from magic bytes
+    const mimeType = detectImageMimeType(buffer);
+
+    return { base64, mimeType };
+  } catch (error) {
+    console.log(`  Error fetching image: ${error}`);
+    return null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -50,12 +116,12 @@ ${passage.content}
 `;
   }
 
+  // Image verification section - only text warning if no image provided
+  // When image IS provided, we use multimodal verification instead
   const figureWarning = question.figure
     ? `
-WARNING: This question includes a figure/graph. Pay special attention to:
-- Whether the marked answer aligns with what the figure should show
-- Potential mismatches between question and visual representation
-Figure Type: ${question.figure.figureType || "unknown"}
+NOTE: This question includes a figure/graph (${question.figure.figureType || "unknown"} type).
+The image has been provided above for visual inspection.
 `
     : "";
 
@@ -98,7 +164,25 @@ VERIFICATION TASKS:
 3. QUESTION CLARITY
    - Is the question stem clear and unambiguous?
    - Does it test the intended skill (${question.skill})?
+${
+  question.figure
+    ? `
+4. IMAGE VERIFICATION (Critical for questions with figures)
+   - LABELS: Are all point/vertex labels (A, B, C, etc.) unique and correctly placed?
+   - NO DUPLICATES: Check that no label appears twice on the diagram
+   - GRAPH ACCURACY: Does the graph/diagram match the equation or values described in the question?
+   - TEXT ALIGNMENT: Does the image accurately represent what the question stem describes?
+   - VISUAL CLARITY: Is the image clear, complete, and properly rendered?
+   - DATA ACCURACY: For charts/tables, do the visual values match the described values?
 
+   IMAGE-SPECIFIC ISSUES to report (if found):
+   - "image_label_error": Duplicate labels, missing labels, or misplaced labels
+   - "image_text_mismatch": Image doesn't match what the question describes
+   - "image_quality_issue": Blurry, incomplete, or malformed image
+   - "image_data_mismatch": Graph/chart data doesn't match described values
+`
+    : ""
+}
 IMPORTANT: Respond with ONLY a JSON object, no other text.
 
 {
@@ -121,7 +205,7 @@ IMPORTANT: Respond with ONLY a JSON object, no other text.
     }
   ],
   "issues": [
-    {"type": "answer_wrong|ambiguous|unclear|too_easy|too_hard", "description": "..."}
+    {"type": "answer_wrong|ambiguous|unclear|too_easy|too_hard|image_label_error|image_text_mismatch|image_quality_issue|image_data_mismatch", "description": "..."}
   ],
   "recommendedAction": "verify" or "needs_revision" or "reject",
   "reviewNotes": "Any additional notes for human review"
@@ -234,13 +318,50 @@ export const reviewSingleQuestion = internalAction({
         question.explanation
       );
 
-      console.log(`  Calling Claude for review...`);
+      // Check if question has a figure and fetch image for multimodal review
+      let imageData: { base64: string; mimeType: string } | null = null;
+      if (question.question.figure?.imageId) {
+        console.log(`  Fetching image for multimodal review...`);
+        imageData = await fetchImageAsBase64(ctx, question.question.figure.imageId);
+        if (imageData) {
+          console.log(`  Image fetched successfully (${imageData.mimeType})`);
+        } else {
+          console.log(`  Could not fetch image, proceeding with text-only review`);
+        }
+      }
+
+      console.log(`  Calling Claude for review...${imageData ? " (with image)" : ""}`);
+
+      // Build message content - multimodal if we have an image
+      type MessageContent = Anthropic.MessageCreateParams["messages"][number]["content"];
+      let messageContent: MessageContent;
+
+      if (imageData) {
+        // Multimodal: image + text
+        messageContent = [
+          {
+            type: "image" as const,
+            source: {
+              type: "base64" as const,
+              media_type: imageData.mimeType as "image/png" | "image/jpeg" | "image/gif" | "image/webp",
+              data: imageData.base64,
+            },
+          },
+          {
+            type: "text" as const,
+            text: prompt,
+          },
+        ];
+      } else {
+        // Text-only
+        messageContent = prompt;
+      }
 
       // Call Claude for review
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-20250514",
         max_tokens: 2000,
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content: messageContent }],
       });
 
       const textBlock = response.content.find((b) => b.type === "text");

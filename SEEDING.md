@@ -77,18 +77,44 @@ npm run generate:reading-data 50 bar_chart,line_graph
 | `line_graph` | Time series and trend data |
 | `data_table` | Tabular data with rows/columns |
 
-## Math Questions
+## Math Questions (AI-Generated)
 
-Math questions with coordinate planes, geometric figures, and data displays.
+SAT-style math questions with dynamically generated problems and figures.
 
 ```bash
-# Generate all math questions from templates
-npm run generate:math
+# Generate 100 random math questions
+npm run generate:math 100
+
+# Generate 50 questions from specific domains
+npm run generate:math 50 algebra,geometry_trig
+
+# Generate 25 advanced math questions
+npm run generate:math 25 advanced_math
 ```
 
-Uses the two-stage pipeline:
-1. Claude generates precise image prompts
-2. Gemini renders the figures
+### Math Domains
+
+| Domain | SAT Weight | Skills |
+|--------|------------|--------|
+| `algebra` | 35% | linear_equations, linear_inequalities, systems_of_equations, linear_functions, absolute_value |
+| `advanced_math` | 35% | quadratic_equations, polynomial_operations, exponential_functions, radical_equations, rational_expressions |
+| `problem_solving` | 15% | ratios_proportions, percentages, statistics_measures, probability, unit_conversion |
+| `geometry_trig` | 15% | triangle_properties, circle_properties, coordinate_geometry, trigonometric_ratios, area_volume |
+
+### Pipeline
+
+Uses a multi-stage pipeline:
+1. Claude generates the math problem with solution
+2. Gemini renders the figure (for graph/geometric questions)
+3. Claude generates multiple-choice options with distractors
+4. Question stored with full metadata
+
+### Static Templates (Legacy)
+
+To generate from the original 9 static templates:
+```bash
+npx convex run seed:seedGraphQuestions
+```
 
 ## Viewing Generated Questions
 
@@ -125,6 +151,15 @@ npm run dlq:data:retry               # Retry all pending
 npm run dlq:data:clear-succeeded     # Clean up succeeded
 ```
 
+### Math Questions DLQ
+```bash
+npm run dlq:math:stats               # View statistics
+npm run dlq:math:pending             # List pending items
+npm run dlq:math:recent              # Recent failures
+npm run dlq:math:retry               # Retry all pending
+npm run dlq:math:clear-succeeded     # Clean up succeeded
+```
+
 ## Clearing Questions
 
 ```bash
@@ -153,6 +188,51 @@ for i in {1..5}; do
 done
 ```
 
+## Reviewing Questions
+
+After generating questions, they must be reviewed before being shown to students. The review system uses Claude to verify:
+- Answer correctness
+- Distractor quality
+- Question clarity
+- **Image verification** (for questions with figures) - Claude visually inspects images for issues like duplicate labels
+
+### Run Reviews
+
+```bash
+# Review up to 10 pending questions (prioritizes questions with images)
+npx convex run questionReview:reviewUnverifiedQuestions '{"limit": 10}'
+
+# Review only math questions
+npx convex run questionReview:reviewUnverifiedQuestions '{"limit": 10, "category": "math"}'
+
+# Review only reading questions
+npx convex run questionReview:reviewUnverifiedQuestions '{"limit": 10, "category": "reading_writing"}'
+
+# Review a specific question
+npx convex run questionReview:reviewSingleQuestion '{"questionId": "...", "reviewType": "initial_verification"}'
+```
+
+### Check Review Status
+
+```bash
+# Get count of questions by review status
+npx convex run questionReviewMutations:getUnreviewedQuestionCount
+
+# Get questions needing manual review
+npx convex run questionReviewMutations:getQuestionsNeedingReview '{"limit": 20, "includeNeedsRevision": true}'
+```
+
+### Review Statuses
+
+| Status | Description | Shown to Students? |
+|--------|-------------|-------------------|
+| `pending` | Generated, awaiting review | No |
+| `verified` | Passed review, ready for use | Yes |
+| `needs_revision` | Review found issues (e.g., image problems) | No |
+| `rejected` | Failed review, should not be used | No |
+
+See `docs/question-review-system.md` for full documentation.
+
 ## Cost Estimates
 
 | Service | Per Question | 100 Questions | 1000 Questions |
@@ -161,6 +241,8 @@ done
 | Gemini (images for data) | ~$0.01 | ~$1 | ~$10 |
 | **Total (reading)** | ~$0.03 | ~$3 | ~$30 |
 | **Total (data)** | ~$0.04 | ~$4 | ~$40 |
+| **Total (math w/ figure)** | ~$0.05 | ~$5 | ~$50 |
+| **Total (math no figure)** | ~$0.04 | ~$4 | ~$40 |
 
 ## Architecture
 
@@ -179,8 +261,13 @@ convex/
 ├── readingDataTemplates.ts        # Data sampling params
 ├── readingDataImagePrompts.ts     # Chart rendering
 ├── readingDataDLQ.ts              # Failed retry queue
-├── graphQuestionTemplates.ts      # Math graph templates
-├── graphImagePipeline.ts          # Math image pipeline
+├── mathQuestionGeneration.ts      # Math pipeline (AI-generated)
+├── mathQuestionTemplates.ts       # Math sampling parameters
+├── mathQuestionPrompts.ts         # Math Claude prompts
+├── mathFigureImagePrompts.ts      # Geometry/graph rendering
+├── mathQuestionDLQ.ts             # Math failed retry queue
+├── graphQuestionTemplates.ts      # Legacy static templates
+├── graphImagePipeline.ts          # Legacy image pipeline
 └── seed.ts                        # Entry points & utilities
 ```
 

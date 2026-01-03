@@ -395,3 +395,15 @@ export const getQuestionsNeedingReview = query({
     return questions.slice(0, limit);
   },
 });
+
+/**
+ * Get an image by ID (for multimodal review).
+ */
+export const getImageById = query({
+  args: {
+    imageId: v.id("images"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.imageId);
+  },
+});
