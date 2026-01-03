@@ -57,6 +57,16 @@ export const getQuestion = query({
       passage = await ctx.db.get(question.passageId);
     }
 
+    // Get passage2 for cross-text questions (stored in tags)
+    let passage2 = null;
+    if (question.skill === "cross_text_connections" && question.tags) {
+      const passage2Tag = question.tags.find((tag) => tag.startsWith("passage2:"));
+      if (passage2Tag) {
+        const passage2Id = passage2Tag.replace("passage2:", "");
+        passage2 = await ctx.db.get(passage2Id as any);
+      }
+    }
+
     // Get explanation
     const explanation = await ctx.db
       .query("explanations")
@@ -67,6 +77,7 @@ export const getQuestion = query({
       ...question,
       options,
       passage,
+      passage2,
       explanation,
     };
   },
@@ -109,10 +120,21 @@ export const getQuestionsForPractice = query({
           passage = await ctx.db.get(question.passageId);
         }
 
+        // Get passage2 for cross-text questions
+        let passage2 = null;
+        if (question.skill === "cross_text_connections" && question.tags) {
+          const passage2Tag = question.tags.find((tag) => tag.startsWith("passage2:"));
+          if (passage2Tag) {
+            const passage2Id = passage2Tag.replace("passage2:", "");
+            passage2 = await ctx.db.get(passage2Id as any);
+          }
+        }
+
         return {
           ...question,
           options,
           passage,
+          passage2,
         };
       })
     );
@@ -140,10 +162,21 @@ export const getAllQuestions = query({
           passage = await ctx.db.get(question.passageId);
         }
 
+        // Get passage2 for cross-text questions
+        let passage2 = null;
+        if (question.skill === "cross_text_connections" && question.tags) {
+          const passage2Tag = question.tags.find((tag) => tag.startsWith("passage2:"));
+          if (passage2Tag) {
+            const passage2Id = passage2Tag.replace("passage2:", "");
+            passage2 = await ctx.db.get(passage2Id as any);
+          }
+        }
+
         return {
           ...question,
           options,
           passage,
+          passage2,
         };
       })
     );

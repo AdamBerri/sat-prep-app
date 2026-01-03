@@ -703,12 +703,26 @@ export default defineSchema({
   readingQuestionDLQ: defineTable({
     // Question type
     questionType: v.union(
+      // Domain 1: Information and Ideas
       v.literal("central_ideas"),
       v.literal("inferences"),
+      v.literal("command_of_evidence"),
+      // Domain 2: Craft and Structure
       v.literal("vocabulary_in_context"),
       v.literal("text_structure"),
-      v.literal("command_of_evidence"),
-      v.literal("rhetorical_synthesis")
+      v.literal("cross_text_connections"),
+      // Domain 3: Expression of Ideas
+      v.literal("rhetorical_synthesis"),
+      v.literal("transitions"),
+      // Domain 4: Standard English Conventions
+      v.literal("boundaries_between_sentences"),
+      v.literal("boundaries_within_sentences"),
+      v.literal("subject_verb_agreement"),
+      v.literal("pronoun_antecedent_agreement"),
+      v.literal("verb_finiteness"),
+      v.literal("verb_tense_aspect"),
+      v.literal("subject_modifier_placement"),
+      v.literal("genitives_plurals")
     ),
     // Passage type
     passageType: v.union(

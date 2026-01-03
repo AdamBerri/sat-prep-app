@@ -152,17 +152,40 @@ function QuestionNav({
 
 function PassageView({
   passage,
+  passage2,
   figure,
+  questionSkill,
 }: {
   passage: { title?: string; author?: string; content: string } | null;
+  passage2?: { title?: string; author?: string; content: string } | null;
   figure?: {
     imageId: Id<"images">;
     figureType?: "graph" | "geometric" | "data_display" | "diagram" | "table";
     caption?: string;
   } | null;
+  questionSkill?: string;
 }) {
   const hasPassage = passage !== null;
+  const hasPassage2 = passage2 !== null && passage2 !== undefined;
   const hasFigure = figure !== null && figure !== undefined;
+  const isCrossText = questionSkill === "cross_text_connections" && hasPassage2;
+  const isTransitions = questionSkill === "transitions" && hasPassage;
+  const isGrammar = questionSkill?.includes("boundaries") ||
+                    questionSkill?.includes("verb") ||
+                    questionSkill?.includes("pronoun") ||
+                    questionSkill?.includes("modifier") ||
+                    questionSkill?.includes("genitives");
+
+  // Grammar questions don't need passages
+  if (isGrammar) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-[var(--ink-faded)] gap-4 p-8">
+        <BookOpen className="w-12 h-12 opacity-30" />
+        <p className="text-center">This grammar question tests Standard English Conventions.</p>
+        <p className="text-sm text-center">Read the sentence carefully and choose the correct option.</p>
+      </div>
+    );
+  }
 
   // Nothing to show
   if (!hasPassage && !hasFigure) {
@@ -175,6 +198,37 @@ function PassageView({
   }
 
   const paragraphs = passage?.content.split("\n\n") ?? [];
+
+  // Helper function to render passage content with blank highlighting for transitions
+  const renderPassageContent = (content: string, isTransitionPassage: boolean) => {
+    if (!isTransitionPassage) {
+      return content.split("\n\n").map((para, i) => (
+        <p
+          key={i}
+          className="font-body text-[var(--ink-black)] leading-relaxed text-base"
+        >
+          {para}
+        </p>
+      ));
+    }
+
+    // For transitions, highlight the blank
+    const parts = content.split("_____");
+    return (
+      <div className="font-body text-[var(--ink-black)] leading-relaxed text-base">
+        {parts.map((part, i) => (
+          <span key={i}>
+            {part}
+            {i < parts.length - 1 && (
+              <span className="inline-block px-3 py-1 bg-[var(--sky-light)] border-2 border-dashed border-[var(--sky-medium)] rounded text-[var(--sky-dark)] font-bold">
+                _____
+              </span>
+            )}
+          </span>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="p-6 sm:p-8 bg-[var(--paper-cream)] min-h-full">
@@ -190,30 +244,82 @@ function PassageView({
         </div>
       )}
 
-      {/* Passage Display */}
-      {hasPassage && (
-        <div>
-          {passage.title && (
-            <h3 className="font-display text-xl font-bold text-[var(--ink-black)] mb-1">
-              {passage.title}
-            </h3>
-          )}
-          {passage.author && (
-            <p className="font-body text-sm text-[var(--ink-faded)] mb-6 italic">
-              — {passage.author}
-            </p>
-          )}
-          <div className="space-y-5">
-            {paragraphs.map((para, i) => (
-              <p
-                key={i}
-                className="font-body text-[var(--ink-black)] leading-relaxed text-base"
-              >
-                {para}
+      {/* Cross-Text: Display TWO passages */}
+      {isCrossText && hasPassage && hasPassage2 ? (
+        <div className="space-y-8">
+          {/* Text 1 */}
+          <div className="border-l-4 border-[var(--grass-medium)] pl-4">
+            <div className="font-display text-sm font-bold text-[var(--grass-dark)] mb-2">
+              Text 1
+            </div>
+            {passage.title && (
+              <h3 className="font-display text-lg font-bold text-[var(--ink-black)] mb-1">
+                {passage.title}
+              </h3>
+            )}
+            {passage.author && (
+              <p className="font-body text-sm text-[var(--ink-faded)] mb-4 italic">
+                — {passage.author}
               </p>
-            ))}
+            )}
+            <div className="space-y-3">
+              {passage.content.split("\n\n").map((para, i) => (
+                <p
+                  key={i}
+                  className="font-body text-[var(--ink-black)] leading-relaxed text-base"
+                >
+                  {para}
+                </p>
+              ))}
+            </div>
+          </div>
+
+          {/* Text 2 */}
+          <div className="border-l-4 border-[var(--sky-medium)] pl-4">
+            <div className="font-display text-sm font-bold text-[var(--sky-dark)] mb-2">
+              Text 2
+            </div>
+            {passage2.title && (
+              <h3 className="font-display text-lg font-bold text-[var(--ink-black)] mb-1">
+                {passage2.title}
+              </h3>
+            )}
+            {passage2.author && (
+              <p className="font-body text-sm text-[var(--ink-faded)] mb-4 italic">
+                — {passage2.author}
+              </p>
+            )}
+            <div className="space-y-3">
+              {passage2.content.split("\n\n").map((para, i) => (
+                <p
+                  key={i}
+                  className="font-body text-[var(--ink-black)] leading-relaxed text-base"
+                >
+                  {para}
+                </p>
+              ))}
+            </div>
           </div>
         </div>
+      ) : (
+        /* Regular Passage Display (or Transitions with blank) */
+        hasPassage && (
+          <div>
+            {passage.title && !isTransitions && (
+              <h3 className="font-display text-xl font-bold text-[var(--ink-black)] mb-1">
+                {passage.title}
+              </h3>
+            )}
+            {passage.author && !isTransitions && (
+              <p className="font-body text-sm text-[var(--ink-faded)] mb-6 italic">
+                — {passage.author}
+              </p>
+            )}
+            <div className="space-y-5">
+              {renderPassageContent(passage.content, isTransitions)}
+            </div>
+          </div>
+        )
       )}
     </div>
   );
@@ -972,7 +1078,9 @@ function ExamScreen({
           <div className="hidden lg:block w-1/2 border-r border-[var(--paper-lines)] overflow-y-auto bg-[var(--paper-cream)]">
             <PassageView
               passage={currentQuestion.passage ?? null}
+              passage2={currentQuestion.passage2 ?? null}
               figure={currentQuestion.figure}
+              questionSkill={currentQuestion.skill}
             />
           </div>
         )}
@@ -988,7 +1096,9 @@ function ExamScreen({
             </button>
             <PassageView
               passage={currentQuestion.passage ?? null}
+              passage2={currentQuestion.passage2 ?? null}
               figure={currentQuestion.figure}
+              questionSkill={currentQuestion.skill}
             />
           </div>
         )}
