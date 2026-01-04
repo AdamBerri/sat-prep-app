@@ -4,7 +4,8 @@
   "git": {
     "deploymentEnabled": {
       "main": true,
-      "production": true
+      "stage": true,
+      "prod": true
     }
   },
   "headers": [

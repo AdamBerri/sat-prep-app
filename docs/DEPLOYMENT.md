@@ -2,18 +2,39 @@
 
 ## Overview
 
-This app uses a **staging → production** deployment pipeline:
+This app uses a **3-tier deployment pipeline**:
 
-| Branch | Environment | Domain | Auto-Deploy |
-|--------|-------------|--------|-------------|
-| `main` | Staging | staging.the1600club.com | Yes (on push) |
-| `production` | Production | the1600club.com | Yes (on merge) |
+| Branch | Environment | Domain | Purpose |
+|--------|-------------|--------|---------|
+| `main` | Development | localhost:3000 | Local dev, base branch for PRs |
+| `stage` | Staging | staging.the1600club.com | Testing before prod |
+| `prod` | Production | the1600club.com | Live users |
 
 **Services per environment:**
-- **Convex**: Separate projects (staging/production data isolation)
-- **Clerk**: Separate instances (dev/production keys)
-- **Stripe**: Test mode (staging) / Live mode (production)
+- **Convex**: Separate projects (stage/prod data isolation)
+- **Clerk**: Dev instance (stage) / Prod instance (prod)
+- **Stripe**: Test mode (stage) / Live mode (prod)
 - **Vercel**: Single project, branch-based deployments
+
+---
+
+## Git Workflow
+
+```
+main (development)
+  │
+  ├── feature branches → PR to main
+  │
+  └── PR to stage ──────→ stage (staging)
+                            │
+                            └── PR to prod ──→ prod (production)
+```
+
+**Daily workflow:**
+1. Create feature branch from `main`
+2. PR to `main` for code review
+3. PR `main` → `stage` to deploy to staging
+4. PR `stage` → `prod` to deploy to production
 
 ---
 
@@ -30,55 +51,42 @@ This app uses a **staging → production** deployment pipeline:
 
 ## Step 1: Create Two Convex Projects
 
-You need **separate Convex projects** for staging and production to isolate data.
+You need **separate Convex projects** for staging and production.
 
 ### 1a. Create Staging Project
 
 ```bash
-# In project root
 npx convex login
 
 # Create staging project
 npx convex init
-# When prompted, name it: 1600club-staging
+# Name it: 1600club-stage
 ```
 
-Save your staging URL (e.g., `https://xxx-staging.convex.cloud`)
+Save your staging URL: `https://xxx-stage.convex.cloud`
 
 ### 1b. Create Production Project
 
 ```bash
-# Create production project
 npx convex init
-# When prompted, name it: 1600club-production
+# Name it: 1600club-prod
 ```
 
-Save your production URL (e.g., `https://xxx-production.convex.cloud`)
+Save your production URL: `https://xxx-prod.convex.cloud`
 
-### 1c. Configure convex.json
-
-Create environment-specific config:
-
-```json
-{
-  "team": "your-team",
-  "project": "1600club-staging"
-}
-```
-
-**Important:** When deploying, specify the project:
+### 1c. Deploy to Each Project
 
 ```bash
 # Deploy to staging
-npx convex deploy --project 1600club-staging
+npx convex deploy --project 1600club-stage
 
 # Deploy to production
-npx convex deploy --project 1600club-production
+npx convex deploy --project 1600club-prod
 ```
 
 ### 1d. Set Convex Environment Variables
 
-In **each** Convex project dashboard (Settings → Environment Variables):
+In **each** Convex dashboard (Settings → Environment Variables):
 
 | Variable | Value |
 |----------|-------|
@@ -87,50 +95,44 @@ In **each** Convex project dashboard (Settings → Environment Variables):
 
 ---
 
-## Step 2: Set Up Clerk (Two Instances)
+## Step 2: Set Up Clerk
 
 ### 2a. Development/Staging Instance
 
 1. Go to Clerk Dashboard
-2. Your default app is the **Development** instance
+2. Use the **Development** instance
 3. Note the keys:
    - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: `pk_test_...`
    - `CLERK_SECRET_KEY`: `sk_test_...`
-4. Configure OAuth (Google) for staging domain
+4. Add staging domain to allowed origins
 
 ### 2b. Production Instance
 
 1. In Clerk Dashboard → Switch to **Production**
-2. Follow the production setup wizard
+2. Complete production setup wizard
 3. Note the keys:
    - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: `pk_live_...`
    - `CLERK_SECRET_KEY`: `sk_live_...`
-4. Add production domain: `the1600club.com`
+4. Add `the1600club.com` to allowed origins
 5. Configure OAuth for production domain
 
 ---
 
-## Step 3: Set Up Stripe (Test & Live)
+## Step 3: Set Up Stripe
 
 ### 3a. Test Mode (Staging)
 
-1. Stripe Dashboard → Ensure **Test mode** toggle is ON
-2. Get test keys:
-   - `STRIPE_SECRET_KEY`: `sk_test_...`
-   - `STRIPE_PUBLISHABLE_KEY`: `pk_test_...`
-3. Set up webhook (after Vercel deploy):
-   - URL: `https://staging.the1600club.com/api/webhook/stripe`
-   - Events: `checkout.session.completed`, `customer.subscription.*`
+1. Stripe Dashboard → **Test mode** ON
+2. Get test keys: `sk_test_...`, `pk_test_...`
+3. Webhook URL: `https://staging.the1600club.com/api/webhook/stripe`
 
 ### 3b. Live Mode (Production)
 
-1. Stripe Dashboard → Toggle to **Live mode**
-2. Get live keys:
-   - `STRIPE_SECRET_KEY`: `sk_live_...`
-   - `STRIPE_PUBLISHABLE_KEY`: `pk_live_...`
-3. Set up webhook:
-   - URL: `https://the1600club.com/api/webhook/stripe`
-   - Events: `checkout.session.completed`, `customer.subscription.*`
+1. Stripe Dashboard → **Live mode**
+2. Get live keys: `sk_live_...`, `pk_live_...`
+3. Webhook URL: `https://the1600club.com/api/webhook/stripe`
+
+Webhook events needed: `checkout.session.completed`, `customer.subscription.*`
 
 ---
 
@@ -142,36 +144,33 @@ In **each** Convex project dashboard (Settings → Environment Variables):
 2. Import your GitHub repository
 3. Framework: **Next.js** (auto-detected)
 
-### 4b. Configure Git Branches
+### 4b. Configure Production Branch
 
 In Vercel Project Settings → Git:
 
-1. **Production Branch**: `production`
-2. This means:
-   - Pushes to `production` → deploys to the1600club.com
-   - Pushes to `main` → deploys to preview URL
-   - PRs → get preview deployments
+- **Production Branch**: `prod`
+
+This means:
+- Pushes to `prod` → deploys to the1600club.com
+- Pushes to `stage` → deploys to staging.the1600club.com
+- Pushes to `main` → preview deployments only
 
 ### 4c. Configure Domains
 
 In Vercel Project Settings → Domains:
 
-1. Add `the1600club.com` (production)
-2. Add `staging.the1600club.com` (staging)
-
-Configure domain assignments:
-- `the1600club.com` → Production (production branch)
-- `staging.the1600club.com` → Preview (main branch)
+| Domain | Git Branch |
+|--------|------------|
+| `the1600club.com` | prod |
+| `staging.the1600club.com` | stage |
 
 ### 4d. Set Environment Variables
 
-In Vercel Project Settings → Environment Variables:
-
-**For Production environment:**
+**Production environment:**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_CONVEX_URL` | `https://xxx-production.convex.cloud` |
+| `NEXT_PUBLIC_CONVEX_URL` | `https://xxx-prod.convex.cloud` |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_live_...` |
 | `CLERK_SECRET_KEY` | `sk_live_...` |
 | `STRIPE_SECRET_KEY` | `sk_live_...` |
@@ -180,11 +179,11 @@ In Vercel Project Settings → Environment Variables:
 | `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` | `/dashboard` |
 | `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | `/dashboard` |
 
-**For Preview environment (staging):**
+**Preview environment (staging):**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_CONVEX_URL` | `https://xxx-staging.convex.cloud` |
+| `NEXT_PUBLIC_CONVEX_URL` | `https://xxx-stage.convex.cloud` |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_test_...` |
 | `CLERK_SECRET_KEY` | `sk_test_...` |
 | `STRIPE_SECRET_KEY` | `sk_test_...` |
@@ -198,62 +197,75 @@ In Vercel Project Settings → Environment Variables:
 ## Step 5: Create Git Branches
 
 ```bash
-# Ensure you're on main
+# Start from main
 git checkout main
 
-# Create production branch
-git checkout -b production
-git push -u origin production
+# Create stage branch
+git checkout -b stage
+git push -u origin stage
 
-# Go back to main for development
+# Create prod branch
+git checkout -b prod
+git push -u origin prod
+
+# Back to main for development
 git checkout main
 ```
 
 ---
 
-## Deployment Workflow
+## Deployment Workflows
 
-### Daily Development (Staging)
+### Feature Development
 
 ```bash
-# Work on main branch
+# Create feature branch
 git checkout main
+git pull origin main
+git checkout -b feature/my-feature
 
-# Make changes
+# Make changes, commit
 git add .
-git commit -m "Add feature X"
-git push origin main
+git commit -m "Add my feature"
+git push -u origin feature/my-feature
 
+# Create PR to main on GitHub
+```
+
+### Deploy to Staging
+
+```bash
+# After PR merged to main
+git checkout main
+git pull origin main
+
+# Create PR: main → stage on GitHub
+# Merge PR
 # Vercel auto-deploys to staging.the1600club.com
+```
+
+Or directly:
+```bash
+git checkout stage
+git merge main
+git push origin stage
 ```
 
 ### Deploy to Production
 
 ```bash
-# Create PR from main → production
-# Review changes
-# Merge PR
-
+# After testing on staging
+# Create PR: stage → prod on GitHub
+# Review and merge
 # Vercel auto-deploys to the1600club.com
 ```
 
-Or via GitHub:
-1. Go to your repo on GitHub
-2. Click "New pull request"
-3. Base: `production` ← Compare: `main`
-4. Review and merge
-5. Vercel deploys automatically
-
 ### Convex Changes
 
-When you update Convex schema or functions:
-
 ```bash
-# Deploy to staging first
-npx convex deploy --project 1600club-staging
-
-# After testing, deploy to production
-npx convex deploy --project 1600club-production
+# Deploy schema/function changes
+npx convex deploy --project 1600club-stage   # Staging
+npx convex deploy --project 1600club-prod    # Production
 ```
 
 ---
@@ -267,53 +279,48 @@ GitHub Actions runs on every push and PR:
 3. **Build** - Next.js build verification
 4. **Convex Codegen** - Convex type generation
 
-All checks must pass before merging to production.
+All checks must pass before merging.
 
 ---
 
 ## Environment Summary
 
-| Service | Staging | Production |
-|---------|---------|------------|
-| **Domain** | staging.the1600club.com | the1600club.com |
-| **Convex** | 1600club-staging | 1600club-production |
-| **Clerk** | Development instance | Production instance |
-| **Stripe** | Test mode | Live mode |
-| **Branch** | main | production |
+| | Development | Staging | Production |
+|--|-------------|---------|------------|
+| **Branch** | main | stage | prod |
+| **Domain** | localhost | staging.the1600club.com | the1600club.com |
+| **Convex** | local dev | 1600club-stage | 1600club-prod |
+| **Clerk** | Dev keys | Dev instance | Prod instance |
+| **Stripe** | Test keys | Test mode | Live mode |
+| **Deploy** | Manual | Auto on push | Auto on push |
 
 ---
 
 ## Troubleshooting
 
-### Build Fails on Vercel
+### Build Fails
 
-1. Check build logs in Vercel dashboard
-2. Ensure all env vars are set for the correct environment
-3. Run `npm run build` locally to reproduce
+1. Check Vercel build logs
+2. Ensure all env vars set for environment
+3. Run `npm run build` locally
 
-### Staging Works, Production Doesn't
+### Staging Works, Prod Doesn't
 
-1. Verify production env vars are set (not test keys)
-2. Check Clerk production instance is configured
-3. Ensure Stripe is in live mode with correct webhook
+1. Verify prod env vars (not test keys)
+2. Check Clerk prod instance configured
+3. Ensure Stripe in live mode
 
 ### Convex Queries Failing
 
-1. Check `NEXT_PUBLIC_CONVEX_URL` points to correct project
-2. Verify Convex project has required env vars
-3. Run `npx convex deploy` to sync schema
+1. Check `NEXT_PUBLIC_CONVEX_URL` correct
+2. Verify Convex env vars set
+3. Run `npx convex deploy`
 
-### Auth Not Working
+### Auth Issues
 
-1. Verify domain is added to Clerk allowed origins
-2. Check OAuth providers are configured for the domain
-3. Ensure correct Clerk keys for environment
-
-### Webhook Issues
-
-1. Check Stripe dashboard for webhook delivery logs
-2. Verify webhook URL matches your domain
-3. Ensure webhook secret is correct in env vars
+1. Domain in Clerk allowed origins
+2. OAuth configured for domain
+3. Correct Clerk keys for environment
 
 ---
 
@@ -321,19 +328,18 @@ All checks must pass before merging to production.
 
 ```bash
 # Local development
-npm run dev              # Start Next.js
-npm run convex           # Start Convex dev server
+npm run dev                              # Next.js dev server
+npm run convex                           # Convex dev server
 
-# Deploy staging
-git push origin main                           # Auto-deploys to Vercel
-npx convex deploy --project 1600club-staging   # Deploy Convex
+# Deploy to staging
+git checkout stage && git merge main && git push
+npx convex deploy --project 1600club-stage
 
-# Deploy production
-# 1. Create PR: main → production
-# 2. Merge PR (Vercel auto-deploys)
-npx convex deploy --project 1600club-production  # Deploy Convex
+# Deploy to production
+# PR: stage → prod on GitHub, then merge
+npx convex deploy --project 1600club-prod
 
-# Check deployment status
-# Visit: https://vercel.com/dashboard
-# Visit: https://dashboard.convex.dev
+# Check status
+# Vercel: vercel.com/dashboard
+# Convex: dashboard.convex.dev
 ```
