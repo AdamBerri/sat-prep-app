@@ -5,9 +5,28 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// Lazy initialization to avoid build-time errors when env vars are not set
+let stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("STRIPE_SECRET_KEY is not set");
+    }
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+  return stripe;
+}
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+let convex: ConvexHttpClient | null = null;
+function getConvex(): ConvexHttpClient {
+  if (!convex) {
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+      throw new Error("NEXT_PUBLIC_CONVEX_URL is not set");
+    }
+    convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+  }
+  return convex;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create pending booking in Convex
-    const bookingResult = await convex.mutation(api.tutoring.createPendingBooking, {
+    const bookingResult = await getConvex().mutation(api.tutoring.createPendingBooking, {
       slotId: slotId as Id<"tutoringSlots">,
       studentId: userId,
       studentEmail: user.emailAddresses[0]?.emailAddress || "",
@@ -47,7 +66,7 @@ export async function POST(request: NextRequest) {
     // Create Stripe Checkout Session
     const origin = request.headers.get("origin") || "http://localhost:3000";
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
         {
@@ -74,7 +93,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Save Stripe session ID to booking
-    await convex.mutation(api.tutoring.setStripeSessionId, {
+    await getConvex().mutation(api.tutoring.setStripeSessionId, {
       bookingId: bookingResult.bookingId as Id<"tutoringBookings">,
       stripeCheckoutSessionId: session.id,
     });

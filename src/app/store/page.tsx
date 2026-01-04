@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useUser, SignInButton, UserButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
@@ -35,7 +35,7 @@ type PDFTest = {
   previewImageStorageId?: Id<"_storage">;
 };
 
-export default function StorePage() {
+function StorePageContent() {
   const { user, isLoaded } = useUser();
   const searchParams = useSearchParams();
   const wasCanceled = searchParams.get("cancelled") === "true";
@@ -513,5 +513,19 @@ export default function StorePage() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function StorePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--grass-dark)]" />
+        </div>
+      }
+    >
+      <StorePageContent />
+    </Suspense>
   );
 }

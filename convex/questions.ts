@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 
 // Get all questions with their options (for exam)
 export const getQuestionsByCategory = query({
@@ -58,12 +59,12 @@ export const getQuestion = query({
     }
 
     // Get passage2 for cross-text questions (stored in tags)
-    let passage2 = null;
+    let passage2: Awaited<ReturnType<typeof ctx.db.get<"passages">>> | null = null;
     if (question.skill === "cross_text_connections" && question.tags) {
       const passage2Tag = question.tags.find((tag) => tag.startsWith("passage2:"));
       if (passage2Tag) {
-        const passage2Id = passage2Tag.replace("passage2:", "");
-        passage2 = await ctx.db.get(passage2Id as any);
+        const passage2Id = passage2Tag.replace("passage2:", "") as Id<"passages">;
+        passage2 = await ctx.db.get(passage2Id);
       }
     }
 
@@ -121,12 +122,12 @@ export const getQuestionsForPractice = query({
         }
 
         // Get passage2 for cross-text questions
-        let passage2 = null;
+        let passage2: Awaited<ReturnType<typeof ctx.db.get<"passages">>> | null = null;
         if (question.skill === "cross_text_connections" && question.tags) {
           const passage2Tag = question.tags.find((tag) => tag.startsWith("passage2:"));
           if (passage2Tag) {
-            const passage2Id = passage2Tag.replace("passage2:", "");
-            passage2 = await ctx.db.get(passage2Id as any);
+            const passage2Id = passage2Tag.replace("passage2:", "") as Id<"passages">;
+            passage2 = await ctx.db.get(passage2Id);
           }
         }
 
@@ -163,12 +164,12 @@ export const getAllQuestions = query({
         }
 
         // Get passage2 for cross-text questions
-        let passage2 = null;
+        let passage2: Awaited<ReturnType<typeof ctx.db.get<"passages">>> | null = null;
         if (question.skill === "cross_text_connections" && question.tags) {
           const passage2Tag = question.tags.find((tag) => tag.startsWith("passage2:"));
           if (passage2Tag) {
-            const passage2Id = passage2Tag.replace("passage2:", "");
-            passage2 = await ctx.db.get(passage2Id as any);
+            const passage2Id = passage2Tag.replace("passage2:", "") as Id<"passages">;
+            passage2 = await ctx.db.get(passage2Id);
           }
         }
 

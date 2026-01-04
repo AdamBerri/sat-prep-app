@@ -530,7 +530,7 @@ export const getOfficialQuestionStats = action({
   args: {},
   handler: async (ctx): Promise<unknown> => {
     const stats = await ctx.runQuery(
-      internal.officialQuestions.getImportStats as unknown as Parameters<typeof ctx.runQuery>[0],
+      internal.officialQuestions.getImportStats,
       {}
     );
     return stats;
@@ -851,14 +851,14 @@ export const generateAllQuestionTypes = action({
 
       // Group results by type
       for (const type of readingTypesToGenerate) {
-        const typeResults = readingResult.results.filter((r: { questionType: string }) => r.questionType === type);
+        const typeResults = readingResult.results.filter((r) => r.questionType === type);
         results.push({
           domain: type === "vocabulary_in_context" || type === "text_structure" ? "craft_and_structure" :
                   type === "rhetorical_synthesis" ? "expression_of_ideas" : "information_and_ideas",
           type,
           requested: args.countPerType,
-          successful: typeResults.filter((r: { success: boolean }) => r.success).length,
-          failed: typeResults.filter((r: { success: boolean }) => !r.success).length,
+          successful: typeResults.filter((r) => r.success).length,
+          failed: typeResults.filter((r) => !r.success).length,
           duration: readingDuration / readingTypesToGenerate.length,
         });
       }
@@ -947,13 +947,13 @@ export const generateAllQuestionTypes = action({
 
       // Group results by type
       for (const type of grammarTypesToGenerate) {
-        const typeResults = grammarResult.results.filter((r: { questionType: string }) => r.questionType === type);
+        const typeResults = grammarResult.results.filter((r) => r.questionType === type);
         results.push({
           domain: "standard_english_conventions",
           type,
           requested: args.countPerType,
-          successful: typeResults.filter((r: { success: boolean }) => r.success).length,
-          failed: typeResults.filter((r: { success: boolean }) => !r.success).length,
+          successful: typeResults.filter((r) => r.success).length,
+          failed: typeResults.filter((r) => !r.success).length,
           duration: grammarDuration / grammarTypesToGenerate.length,
         });
       }

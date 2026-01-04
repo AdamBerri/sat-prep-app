@@ -4,8 +4,28 @@ import Stripe from "stripe";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../convex/_generated/api";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// Lazy initialization to avoid build-time errors when env vars are not set
+let stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("STRIPE_SECRET_KEY is not set");
+    }
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+  return stripe;
+}
+
+let convex: ConvexHttpClient | null = null;
+function getConvex(): ConvexHttpClient {
+  if (!convex) {
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+      throw new Error("NEXT_PUBLIC_CONVEX_URL is not set");
+    }
+    convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+  }
+  return convex;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const stripeCustomerId = await convex.query(
+    const stripeCustomerId = await getConvex().query(
       api.subscriptions.getStripeCustomerId,
       { userId }
     );
@@ -28,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     const origin = request.headers.get("origin") || "http://localhost:3000";
 
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: stripeCustomerId,
       return_url: `${origin}/dashboard/billing`,
     });

@@ -5,8 +5,28 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// Lazy initialization to avoid build-time errors when env vars are not set
+let stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("STRIPE_SECRET_KEY is not set");
+    }
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+  return stripe;
+}
+
+let convex: ConvexHttpClient | null = null;
+function getConvex(): ConvexHttpClient {
+  if (!convex) {
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+      throw new Error("NEXT_PUBLIC_CONVEX_URL is not set");
+    }
+    convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+  }
+  return convex;
+}
 
 // Pricing in cents
 const SINGLE_TEST_PRICE = 2000; // $20
@@ -56,7 +76,7 @@ export async function POST(request: NextRequest) {
     const amount = purchaseType === "single" ? SINGLE_TEST_PRICE : BUNDLE_PRICE;
 
     // Create pending purchase in Convex
-    const purchaseId = await convex.mutation(
+    const purchaseId = await getConvex().mutation(
       api.pdfTests.createPendingPurchase,
       {
         userId,
@@ -69,7 +89,7 @@ export async function POST(request: NextRequest) {
     // Create Stripe checkout session
     const origin = request.headers.get("origin") || "http://localhost:3000";
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
         {
@@ -103,7 +123,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Save Stripe session ID to purchase
-    await convex.mutation(api.pdfTests.setStripeSessionId, {
+    await getConvex().mutation(api.pdfTests.setStripeSessionId, {
       purchaseId: purchaseId as Id<"pdfPurchases">,
       stripeCheckoutSessionId: session.id,
     });

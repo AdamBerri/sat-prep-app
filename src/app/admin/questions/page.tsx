@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search,
@@ -23,6 +23,7 @@ import {
   SortAsc,
   SortDesc,
   X,
+  Loader2,
 } from "lucide-react";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { MathText } from "@/components/MathText";
@@ -116,7 +117,7 @@ interface QuestionWithDetails {
   };
 }
 
-export default function AdminQuestionsPage() {
+function AdminQuestionsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -936,5 +937,19 @@ function QuestionCard({
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminQuestionsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--grass-dark)]" />
+        </div>
+      }
+    >
+      <AdminQuestionsContent />
+    </Suspense>
   );
 }

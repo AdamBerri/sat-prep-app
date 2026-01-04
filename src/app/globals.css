@@ -32,6 +32,12 @@
   --ink-blue: #3d5a80;
   --ink-faded: #5c5346;
 
+  /* Sky blues */
+  --sky-light: #e0f2fe;
+  --sky-medium: #7dd3fc;
+  --sky-blue: #38bdf8;
+  --sky-dark: #0284c7;
+
   /* Accent */
   --sunflower: #f4c430;
   --wildflower: #9b6b9e;

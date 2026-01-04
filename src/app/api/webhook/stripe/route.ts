@@ -3,11 +3,35 @@ import Stripe from "stripe";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../convex/_generated/api";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// Lazy initialization to avoid build-time errors when env vars are not set
+let stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("STRIPE_SECRET_KEY is not set");
+    }
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+  return stripe;
+}
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+let convex: ConvexHttpClient | null = null;
+function getConvex(): ConvexHttpClient {
+  if (!convex) {
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+      throw new Error("NEXT_PUBLIC_CONVEX_URL is not set");
+    }
+    convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+  }
+  return convex;
+}
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+function getWebhookSecret(): string {
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    throw new Error("STRIPE_WEBHOOK_SECRET is not set");
+  }
+  return process.env.STRIPE_WEBHOOK_SECRET;
+}
 
 // Map Stripe price IDs to plan names
 const PRICE_TO_PLAN: Record<string, "monthly" | "three_month" | "annual"> = {
@@ -59,7 +83,7 @@ export async function POST(request: NextRequest) {
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      event = getStripe().webhooks.constructEvent(body, signature, getWebhookSecret());
     } catch (err) {
       console.error("Webhook signature verification failed:", err);
       return NextResponse.json(
@@ -86,7 +110,7 @@ export async function POST(request: NextRequest) {
 
           if (purchaseType === "pdf") {
             // PDF test purchase
-            await convex.mutation(api.pdfTests.confirmPurchase, {
+            await getConvex().mutation(api.pdfTests.confirmPurchase, {
               stripeCheckoutSessionId: session.id,
               stripePaymentIntentId: session.payment_intent as
                 | string
@@ -95,7 +119,7 @@ export async function POST(request: NextRequest) {
             console.log(`PDF purchase confirmed for session: ${session.id}`);
           } else {
             // Tutoring booking
-            await convex.mutation(api.tutoring.confirmBooking, {
+            await getConvex().mutation(api.tutoring.confirmBooking, {
               stripeCheckoutSessionId: session.id,
               stripePaymentIntentId: session.payment_intent as
                 | string
@@ -120,7 +144,7 @@ export async function POST(request: NextRequest) {
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        await convex.mutation(api.subscriptions.cancelSubscription, {
+        await getConvex().mutation(api.subscriptions.cancelSubscription, {
           stripeSubscriptionId: subscription.id,
         });
         console.log(`Subscription canceled: ${subscription.id}`);
@@ -135,7 +159,7 @@ export async function POST(request: NextRequest) {
         const subscriptionId = getSubscriptionIdFromInvoice(invoice);
         if (subscriptionId) {
           // Refresh subscription data on successful renewal
-          const subscription = await stripe.subscriptions.retrieve(
+          const subscription = await getStripe().subscriptions.retrieve(
             subscriptionId
           );
           await handleSubscriptionUpdate(subscription);
@@ -148,7 +172,7 @@ export async function POST(request: NextRequest) {
         const invoice = event.data.object;
         const subscriptionId = getSubscriptionIdFromInvoice(invoice);
         if (subscriptionId) {
-          await convex.mutation(api.subscriptions.updateSubscriptionStatus, {
+          await getConvex().mutation(api.subscriptions.updateSubscriptionStatus, {
             stripeSubscriptionId: subscriptionId,
             status: "past_due",
           });
@@ -193,7 +217,7 @@ export async function POST(request: NextRequest) {
 async function handleSubscriptionCheckoutCompleted(
   session: Stripe.Checkout.Session
 ) {
-  const subscription = await stripe.subscriptions.retrieve(
+  const subscription = await getStripe().subscriptions.retrieve(
     session.subscription as string
   );
 
@@ -208,7 +232,7 @@ async function handleSubscriptionCheckoutCompleted(
     return;
   }
 
-  await convex.mutation(api.subscriptions.createSubscription, {
+  await getConvex().mutation(api.subscriptions.createSubscription, {
     userId,
     stripeCustomerId: session.customer as string,
     stripeSubscriptionId: subscription.id,
@@ -226,7 +250,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   const priceId = subscription.items.data[0].price.id;
   const plan = getPlanFromPriceId(priceId);
 
-  await convex.mutation(api.subscriptions.updateSubscription, {
+  await getConvex().mutation(api.subscriptions.updateSubscription, {
     stripeSubscriptionId: subscription.id,
     stripePriceId: priceId,
     plan,

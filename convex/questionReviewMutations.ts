@@ -1,4 +1,4 @@
-import { internalMutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 
@@ -94,7 +94,8 @@ export const addToReviewDLQ = internalMutation({
     questionId: v.id("questions"),
     reviewType: v.union(
       v.literal("initial_verification"),
-      v.literal("high_error_rate_recheck")
+      v.literal("high_error_rate_recheck"),
+      v.literal("post_improvement_verification")
     ),
     error: v.string(),
   },
@@ -244,7 +245,7 @@ export const updateCorrectAnswer = internalMutation({
 // QUERIES
 // ─────────────────────────────────────────────────────────
 
-export const getQuestionForReview = query({
+export const getQuestionForReview = internalQuery({
   args: {
     questionId: v.id("questions"),
   },
@@ -274,7 +275,7 @@ export const getQuestionForReview = query({
   },
 });
 
-export const getUnverifiedQuestions = query({
+export const getUnverifiedQuestions = internalQuery({
   args: {
     limit: v.optional(v.number()),
     category: v.optional(v.union(v.literal("reading_writing"), v.literal("math"))),
@@ -399,7 +400,7 @@ export const getQuestionsNeedingReview = query({
 /**
  * Get an image by ID (for multimodal review).
  */
-export const getImageById = query({
+export const getImageById = internalQuery({
   args: {
     imageId: v.id("images"),
   },

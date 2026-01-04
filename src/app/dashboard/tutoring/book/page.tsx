@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -11,7 +11,7 @@ import { ArrowLeft, Loader2, User, DollarSign, Clock, AlertCircle } from "lucide
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-export default function BookTutoringPage() {
+function BookTutoringContent() {
   const { user } = useUser();
   const searchParams = useSearchParams();
   const wasCancelled = searchParams.get("cancelled") === "true";
@@ -347,5 +347,19 @@ export default function BookTutoringPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function BookTutoringPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--grass-dark)]" />
+        </div>
+      }
+    >
+      <BookTutoringContent />
+    </Suspense>
   );
 }

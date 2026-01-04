@@ -237,7 +237,7 @@ export const getRandomExamples = internalQuery({
 /**
  * Get stats on imported questions.
  */
-export const getImportStats = query({
+export const getImportStats = internalQuery({
   args: {},
   handler: async (ctx) => {
     const all = await ctx.db.query("officialQuestions").collect();

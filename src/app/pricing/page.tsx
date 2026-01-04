@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useUser, SignInButton, UserButton } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Leaf,
   Check,
-  Star,
   Sparkles,
   ArrowRight,
   Loader2,
@@ -17,7 +16,7 @@ import {
 } from "lucide-react";
 import { PRICING_TIERS, TIER_ORDER, type PricingTier } from "@/lib/pricing";
 
-export default function PricingPage() {
+function PricingPageContent() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -367,5 +366,19 @@ export default function PricingPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--grass-dark)]" />
+        </div>
+      }
+    >
+      <PricingPageContent />
+    </Suspense>
   );
 }

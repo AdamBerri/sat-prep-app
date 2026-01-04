@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../convex/_generated/api";
@@ -1524,15 +1524,5 @@ function EndlessPageContent() {
 }
 
 export default function EndlessPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[var(--paper-cream)] flex items-center justify-center">
-          <div className="animate-pulse text-[var(--ink-faded)]">Loading...</div>
-        </div>
-      }
-    >
-      <EndlessPageContent />
-    </Suspense>
-  );
+  return <EndlessPageContent />;
 }

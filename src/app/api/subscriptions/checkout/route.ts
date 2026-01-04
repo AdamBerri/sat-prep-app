@@ -4,14 +4,36 @@ import Stripe from "stripe";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../convex/_generated/api";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// Lazy initialization to avoid build-time errors when env vars are not set
+let stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("STRIPE_SECRET_KEY is not set");
+    }
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+  return stripe;
+}
 
-const PRICE_IDS: Record<string, string> = {
-  monthly: process.env.STRIPE_PRICE_MONTHLY!,
-  three_month: process.env.STRIPE_PRICE_THREE_MONTH!,
-  annual: process.env.STRIPE_PRICE_ANNUAL!,
-};
+let convex: ConvexHttpClient | null = null;
+function getConvex(): ConvexHttpClient {
+  if (!convex) {
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+      throw new Error("NEXT_PUBLIC_CONVEX_URL is not set");
+    }
+    convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+  }
+  return convex;
+}
+
+function getPriceIds(): Record<string, string> {
+  return {
+    monthly: process.env.STRIPE_PRICE_MONTHLY || "",
+    three_month: process.env.STRIPE_PRICE_THREE_MONTH || "",
+    annual: process.env.STRIPE_PRICE_ANNUAL || "",
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,18 +50,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { plan } = body as { plan: string };
 
-    if (!plan || !PRICE_IDS[plan]) {
+    const priceIds = getPriceIds();
+    if (!plan || !priceIds[plan]) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
     // Get or create Stripe customer
-    let stripeCustomerId = await convex.query(
+    let stripeCustomerId = await getConvex().query(
       api.subscriptions.getStripeCustomerId,
       { userId }
     );
 
     if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({
+      const customer = await getStripe().customers.create({
         email: user.emailAddresses[0]?.emailAddress,
         name: user.firstName
           ? `${user.firstName} ${user.lastName || ""}`.trim()
@@ -48,7 +71,7 @@ export async function POST(request: NextRequest) {
       });
       stripeCustomerId = customer.id;
 
-      await convex.mutation(api.subscriptions.setStripeCustomerId, {
+      await getConvex().mutation(api.subscriptions.setStripeCustomerId, {
         userId,
         stripeCustomerId,
       });
@@ -57,13 +80,13 @@ export async function POST(request: NextRequest) {
     // Create checkout session
     const origin = request.headers.get("origin") || "http://localhost:3000";
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       customer: stripeCustomerId,
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [
         {
-          price: PRICE_IDS[plan],
+          price: priceIds[plan],
           quantity: 1,
         },
       ],

@@ -888,7 +888,8 @@ export default defineSchema({
     questionId: v.id("questions"),
     reviewType: v.union(
       v.literal("initial_verification"),
-      v.literal("high_error_rate_recheck")
+      v.literal("high_error_rate_recheck"),
+      v.literal("post_improvement_verification")
     ),
     error: v.string(),
     retryCount: v.number(),
