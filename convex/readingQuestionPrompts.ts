@@ -6,12 +6,23 @@
 
 import {
   type SampledReadingParams,
-  type QuestionType,
   type PassageType,
   PASSAGE_TYPE_CHARACTERISTICS,
   READING_DISTRACTOR_STRATEGIES,
   READING_QUESTION_PARAMS,
 } from "./readingQuestionTemplates";
+
+/**
+ * Reading-only question types that have passage-based prompts.
+ * Excludes transitions, cross-text, and grammar types which have their own prompt files.
+ */
+export type ReadingOnlyQuestionType =
+  | "central_ideas"
+  | "inferences"
+  | "command_of_evidence"
+  | "vocabulary_in_context"
+  | "text_structure"
+  | "rhetorical_synthesis";
 
 // ─────────────────────────────────────────────────────────
 // PASSAGE GENERATION PROMPT
@@ -76,9 +87,10 @@ Generate the passage now:`;
 // ─────────────────────────────────────────────────────────
 
 /**
- * Detailed prompts for generating each question type.
+ * Detailed prompts for generating reading question types.
+ * Note: Transitions, cross-text, and grammar types have their own dedicated prompt files.
  */
-export const QUESTION_TYPE_PROMPTS: Record<QuestionType, string> = {
+export const QUESTION_TYPE_PROMPTS: Record<ReadingOnlyQuestionType, string> = {
   central_ideas: `You are generating an SAT Central Ideas question.
 
 This question type asks students to identify the main point, central claim, or primary purpose of the passage.
@@ -403,7 +415,7 @@ export function buildDistractorInstructions(
  * Build the question generation prompt for a specific type.
  */
 export function buildQuestionGenerationPrompt(
-  questionType: QuestionType,
+  questionType: ReadingOnlyQuestionType,
   passage: string,
   passageAnalysis: {
     mainIdea: string;
@@ -458,7 +470,7 @@ export function buildFewShotPrompt(
     choices: { A: string; B: string; C: string; D: string };
     correctAnswer: string;
   }>,
-  questionType: QuestionType,
+  questionType: ReadingOnlyQuestionType,
   passageAndInstructions: string
 ): string {
   const examplesText = officialExamples

@@ -8,12 +8,11 @@ import { Id } from "./_generated/dataModel";
 
 import {
   sampleTransitionParams,
+  computeTransitionsRwDifficulty,
   type SampledTransitionParams,
 } from "./transitionsTemplates";
 
-import {
-  generateTransitionsPrompt,
-} from "./newQuestionTypePrompts";
+import { getTransitionsPrompt } from "./transitionsPrompts";
 
 // ─────────────────────────────────────────────────────────
 // TRANSITIONS QUESTION GENERATION PIPELINE
@@ -29,6 +28,43 @@ function getAnthropicClient() {
     throw new Error("ANTHROPIC_API_KEY environment variable is required");
   }
   return new Anthropic({ apiKey });
+}
+
+// ─────────────────────────────────────────────────────────
+// ANSWER SHUFFLING UTILITY
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Shuffle answer choices so the correct answer isn't always A.
+ * Returns new choices object and updated correctAnswer key.
+ */
+function shuffleAnswerChoices(
+  choices: { A: string; B: string; C: string; D: string },
+  correctAnswer: string
+): { shuffledChoices: { A: string; B: string; C: string; D: string }; newCorrectAnswer: string } {
+  const keys: ("A" | "B" | "C" | "D")[] = ["A", "B", "C", "D"];
+  const entries = keys.map((key) => ({ key, content: choices[key] }));
+
+  // Fisher-Yates shuffle
+  for (let i = entries.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [entries[i], entries[j]] = [entries[j], entries[i]];
+  }
+
+  // Find where the correct answer ended up
+  const correctContent = choices[correctAnswer as keyof typeof choices];
+  const newCorrectIndex = entries.findIndex((e) => e.content === correctContent);
+  const newCorrectAnswer = keys[newCorrectIndex];
+
+  // Build new choices object
+  const shuffledChoices = {
+    A: entries[0].content,
+    B: entries[1].content,
+    C: entries[2].content,
+    D: entries[3].content,
+  };
+
+  return { shuffledChoices, newCorrectAnswer };
 }
 
 // ─────────────────────────────────────────────────────────
@@ -61,10 +97,11 @@ async function generateTransitionsQuestionWithClaude(
   anthropic: Anthropic,
   params: SampledTransitionParams
 ): Promise<GeneratedTransitionsQuestion> {
-  const prompt = generateTransitionsPrompt(params);
+  // Get the verbalized prompt for this transitions question
+  const prompt = getTransitionsPrompt(params);
 
-  console.log(`  Generating transitions question (${params.relationshipType})...`);
-  console.log(`    Correct transition: "${params.correctTransition}"`);
+  console.log(`  Generating transitions question (difficulty: ${params.targetOverallDifficulty.toFixed(2)})...`);
+  console.log(`    Topic: ${params.topicCategory}`);
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -161,14 +198,15 @@ async function generateSingleTransitionsQuestion(
       const domain = "expression_of_ideas";
       const skill = "transitions";
 
-      // Compute difficulty factors
-      const rwDifficulty = {
-        passageComplexity: params.sentenceComplexity,
-        inferenceDepth: 1.0 - params.relationshipClarityLevel, // Less clarity = more inference needed
-        vocabularyLevel: params.sentenceComplexity,
-        evidenceEvaluation: 0.3, // Some evaluation needed to pick right transition
-        synthesisRequired: 0.5, // Must understand relationship between ideas
-      };
+      // FIXED: Compute proper rwDifficulty using all sampled factors
+      const rwDifficulty = computeTransitionsRwDifficulty(params);
+
+      // Shuffle answer choices so correct answer isn't always A
+      const { shuffledChoices, newCorrectAnswer } = shuffleAnswerChoices(
+        question.choices,
+        question.correctAnswer
+      );
+      console.log(`    Shuffled: correct answer is now ${newCorrectAnswer}`);
 
       // Create the question
       const questionId = (await ctx.runMutation(
@@ -180,24 +218,24 @@ async function generateSingleTransitionsQuestion(
           skill,
           prompt: question.questionStem,
           passageId,
-          correctAnswer: question.correctAnswer,
+          correctAnswer: newCorrectAnswer,
           options: [
-            { key: "A", content: question.choices.A, order: 0 },
-            { key: "B", content: question.choices.B, order: 1 },
-            { key: "C", content: question.choices.C, order: 2 },
-            { key: "D", content: question.choices.D, order: 3 },
+            { key: "A", content: shuffledChoices.A, order: 0 },
+            { key: "B", content: shuffledChoices.B, order: 1 },
+            { key: "C", content: shuffledChoices.C, order: 2 },
+            { key: "D", content: shuffledChoices.D, order: 3 },
           ],
           explanation: question.explanation,
           rwDifficulty,
           generationMetadata: {
             generatedAt: Date.now(),
-            agentVersion: "transitions-v1",
+            agentVersion: "transitions-v2",
             promptTemplate: "transitions",
             promptParameters: params,
             verbalizedSampling: {
               targetDifficultyDistribution: [
                 { factor: "sentenceComplexity", mean: 0.5, stdDev: 0.2 },
-                { factor: "relationshipClarityLevel", mean: 0.5, stdDev: 0.2 },
+                { factor: "relationshipSubtlety", mean: 0.5, stdDev: 0.25 },
               ],
               sampledValues: params,
             },
@@ -208,7 +246,6 @@ async function generateSingleTransitionsQuestion(
             domain,
             skill,
             "transitions",
-            params.relationshipType,
             params.topicCategory,
             "agent_generated",
           ],
@@ -252,20 +289,7 @@ async function generateSingleTransitionsQuestion(
  */
 export const generateTransitionsQuestion = internalAction({
   args: {
-    relationshipType: v.optional(
-      v.union(
-        v.literal("addition"),
-        v.literal("contrast"),
-        v.literal("cause_effect"),
-        v.literal("example"),
-        v.literal("clarification"),
-        v.literal("temporal"),
-        v.literal("emphasis"),
-        v.literal("concession"),
-        v.literal("comparison"),
-        v.literal("conclusion")
-      )
-    ),
+    targetDifficulty: v.optional(v.number()),
     batchId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -275,13 +299,13 @@ export const generateTransitionsQuestion = internalAction({
 
     // Sample parameters with any overrides
     const params = sampleTransitionParams({
-      relationshipType: args.relationshipType,
+      targetOverallDifficulty: args.targetDifficulty,
     });
 
     console.log(`  Sampled params:`, {
-      relationshipType: params.relationshipType,
-      correctTransition: params.correctTransition,
       topicCategory: params.topicCategory,
+      sentenceComplexity: params.sentenceComplexity.toFixed(2),
+      targetDifficulty: params.targetOverallDifficulty.toFixed(2),
     });
 
     return await generateSingleTransitionsQuestion(ctx, anthropic, params, args.batchId);
@@ -310,7 +334,7 @@ export const batchGenerateTransitionsQuestions = internalAction({
       index: number;
       success: boolean;
       questionId?: string;
-      relationshipType?: string;
+      topicCategory?: string;
       error?: string;
     }> = [];
 
@@ -318,7 +342,7 @@ export const batchGenerateTransitionsQuestions = internalAction({
       // Sample fresh parameters for each question
       const params = sampleTransitionParams();
 
-      console.log(`\n[${i + 1}/${args.count}] Generating transitions (${params.relationshipType})...`);
+      console.log(`\n[${i + 1}/${args.count}] Generating transitions (difficulty: ${params.targetOverallDifficulty.toFixed(2)})...`);
 
       const result = await generateSingleTransitionsQuestion(ctx, anthropic, params, batchId);
 
@@ -327,13 +351,13 @@ export const batchGenerateTransitionsQuestions = internalAction({
           index: i,
           success: true,
           questionId: result.questionId?.toString(),
-          relationshipType: params.relationshipType,
+          topicCategory: params.topicCategory,
         });
       } else {
         results.push({
           index: i,
           success: false,
-          relationshipType: params.relationshipType,
+          topicCategory: params.topicCategory,
           error: result.error,
         });
       }

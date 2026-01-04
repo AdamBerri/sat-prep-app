@@ -123,6 +123,13 @@ export interface QuestionSource {
   generationBatchId?: string;
 }
 
+// Grammar-specific display data (for Standard English Conventions questions)
+export interface GrammarData {
+  sentenceWithUnderline: string; // Full sentence with [underlined] portion marked
+  underlinedPortion: string; // The portion being tested
+  grammarRule: string; // The grammar rule being tested
+}
+
 export interface Question {
   _id: Id<"questions">;
   type: QuestionType;
@@ -135,6 +142,7 @@ export interface Question {
   rwDifficulty?: RWDifficultyFactors;
   generationMetadata?: GenerationMetadata;
   prompt: string;
+  grammarData?: GrammarData; // For grammar/conventions questions
   passageId?: Id<"passages">;
   passage?: Passage | null;
   passage2?: Passage | null; // For cross-text questions

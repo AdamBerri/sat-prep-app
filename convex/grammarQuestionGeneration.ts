@@ -8,20 +8,12 @@ import { Id } from "./_generated/dataModel";
 
 import {
   sampleGrammarParams,
+  computeGrammarRwDifficulty,
   type SampledGrammarParams,
+  type GrammarQuestionType,
 } from "./grammarConventionsTemplates";
 
-import {
-  PROMPT_GENERATORS,
-  generateSubjectVerbAgreementPrompt,
-  generatePronounAgreementPrompt,
-  generateVerbFinitenessPrompt,
-  generateVerbTensePrompt,
-  generateModifierPlacementPrompt,
-  generateGenitivesPluralsPrompt,
-  generateBoundariesBetweenPrompt,
-  generateBoundariesWithinPrompt,
-} from "./newQuestionTypePrompts";
+import { getGrammarPrompt } from "./grammarPrompts";
 
 // ─────────────────────────────────────────────────────────
 // GRAMMAR QUESTION GENERATION PIPELINE
@@ -38,6 +30,43 @@ function getAnthropicClient() {
     throw new Error("ANTHROPIC_API_KEY environment variable is required");
   }
   return new Anthropic({ apiKey });
+}
+
+// ─────────────────────────────────────────────────────────
+// ANSWER SHUFFLING UTILITY
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Shuffle answer choices so the correct answer isn't always A.
+ * Returns new choices object and updated correctAnswer key.
+ */
+function shuffleAnswerChoices(
+  choices: { A: string; B: string; C: string; D: string },
+  correctAnswer: string
+): { shuffledChoices: { A: string; B: string; C: string; D: string }; newCorrectAnswer: string } {
+  const keys: ("A" | "B" | "C" | "D")[] = ["A", "B", "C", "D"];
+  const entries = keys.map((key) => ({ key, content: choices[key] }));
+
+  // Fisher-Yates shuffle
+  for (let i = entries.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [entries[i], entries[j]] = [entries[j], entries[i]];
+  }
+
+  // Find where the correct answer ended up
+  const correctContent = choices[correctAnswer as keyof typeof choices];
+  const newCorrectIndex = entries.findIndex((e) => e.content === correctContent);
+  const newCorrectAnswer = keys[newCorrectIndex];
+
+  // Build new choices object
+  const shuffledChoices = {
+    A: entries[0].content,
+    B: entries[1].content,
+    C: entries[2].content,
+    D: entries[3].content,
+  };
+
+  return { shuffledChoices, newCorrectAnswer };
 }
 
 // ─────────────────────────────────────────────────────────
@@ -70,15 +99,10 @@ async function generateGrammarQuestionWithClaude(
   anthropic: Anthropic,
   params: SampledGrammarParams
 ): Promise<GeneratedGrammarQuestion> {
-  // Get the appropriate prompt generator
-  const promptGenerator = PROMPT_GENERATORS[params.questionType];
-  if (!promptGenerator) {
-    throw new Error(`No prompt generator for question type: ${params.questionType}`);
-  }
+  // Get the verbalized prompt for this grammar question type
+  const prompt = getGrammarPrompt(params);
 
-  const prompt = promptGenerator(params);
-
-  console.log(`  Generating ${params.questionType} question (${params.patternType})...`);
+  console.log(`  Generating ${params.questionType} question (difficulty: ${params.targetOverallDifficulty.toFixed(2)})...`);
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -158,14 +182,15 @@ async function generateSingleGrammarQuestion(
       const domain = "standard_english_conventions";
       const skill = params.questionType;
 
-      // For grammar questions, difficulty is primarily based on complexity and clarity
-      const rwDifficulty = {
-        passageComplexity: params.sentenceComplexity,
-        inferenceDepth: 0.0, // Grammar questions don't require inference
-        vocabularyLevel: params.sentenceComplexity,
-        evidenceEvaluation: 0.0, // No evidence evaluation
-        synthesisRequired: 0.0, // No synthesis required
-      };
+      // FIXED: Compute proper rwDifficulty using all sampled factors (not 0.0!)
+      const rwDifficulty = computeGrammarRwDifficulty(params);
+
+      // Shuffle answer choices so correct answer isn't always A
+      const { shuffledChoices, newCorrectAnswer } = shuffleAnswerChoices(
+        question.choices,
+        question.correctAnswer
+      );
+      console.log(`    Shuffled: correct answer is now ${newCorrectAnswer}`);
 
       // Create the question (no passage for grammar questions)
       const questionId = (await ctx.runMutation(
@@ -177,15 +202,21 @@ async function generateSingleGrammarQuestion(
           skill,
           prompt: question.questionStem,
           // No passageId for grammar questions - they're standalone sentences
-          correctAnswer: question.correctAnswer,
+          correctAnswer: newCorrectAnswer,
           options: [
-            { key: "A", content: question.choices.A, order: 0 },
-            { key: "B", content: question.choices.B, order: 1 },
-            { key: "C", content: question.choices.C, order: 2 },
-            { key: "D", content: question.choices.D, order: 3 },
+            { key: "A", content: shuffledChoices.A, order: 0 },
+            { key: "B", content: shuffledChoices.B, order: 1 },
+            { key: "C", content: shuffledChoices.C, order: 2 },
+            { key: "D", content: shuffledChoices.D, order: 3 },
           ],
           explanation: question.explanation,
           rwDifficulty,
+          // NEW: Store grammar-specific display data
+          grammarData: {
+            sentenceWithUnderline: question.sentenceWithUnderline,
+            underlinedPortion: question.underlinedPortion,
+            grammarRule: question.grammarRule,
+          },
           generationMetadata: {
             generatedAt: Date.now(),
             agentVersion: "grammar-question-v1",
@@ -261,7 +292,7 @@ export const generateGrammarQuestion = internalAction({
       v.literal("subject_modifier_placement"),
       v.literal("genitives_plurals")
     ),
-    patternType: v.optional(v.string()),
+    targetDifficulty: v.optional(v.number()),
     batchId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -271,17 +302,17 @@ export const generateGrammarQuestion = internalAction({
 
     // Sample verbalized parameters with any overrides
     const params = sampleGrammarParams(
-      args.questionType as SampledGrammarParams["questionType"],
+      args.questionType as GrammarQuestionType,
       {
-        patternType: args.patternType,
+        targetOverallDifficulty: args.targetDifficulty,
       }
     );
 
     console.log(`  Sampled params:`, {
       questionType: params.questionType,
-      patternType: params.patternType,
       sentenceComplexity: params.sentenceComplexity.toFixed(2),
-      contextClarity: params.contextClarity.toFixed(2),
+      grammarSubtlety: params.grammarSubtlety.toFixed(2),
+      targetDifficulty: params.targetOverallDifficulty.toFixed(2),
     });
 
     return await generateSingleGrammarQuestion(ctx, anthropic, params, args.batchId);
@@ -345,13 +376,13 @@ export const batchGenerateGrammarQuestions = internalAction({
 
     for (let i = 0; i < args.count; i++) {
       // Rotate through specified types
-      const questionType = questionTypes[i % questionTypes.length] as SampledGrammarParams["questionType"];
+      const questionType = questionTypes[i % questionTypes.length] as GrammarQuestionType;
 
       // Sample fresh parameters for each question
       const params = sampleGrammarParams(questionType);
 
       console.log(`\n[${i + 1}/${args.count}] Generating ${params.questionType}...`);
-      console.log(`  Pattern: ${params.patternType}`);
+      console.log(`  Topic: ${params.topicCategory}`);
       console.log(`  Difficulty: ${params.targetOverallDifficulty.toFixed(2)}`);
 
       const result = await generateSingleGrammarQuestion(ctx, anthropic, params, batchId);

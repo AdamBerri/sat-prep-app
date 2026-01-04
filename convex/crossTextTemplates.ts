@@ -1,16 +1,25 @@
 // ─────────────────────────────────────────────────────────
 // CROSS-TEXT CONNECTIONS TEMPLATES
 // ─────────────────────────────────────────────────────────
-// Templates for generating SAT questions that test students' ability
-// to draw connections between two related short texts.
+// Verbalized sampling parameters for SAT Cross-Text questions.
+// Uses Gaussian distributions for difficulty factors.
+// NO rigid relationship types - let Claude generate freely.
 
+// ─────────────────────────────────────────────────────────
+// RELATIONSHIP TYPES (for reference, not rigidity)
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Types of relationships between two texts.
+ * These are for reference/prompting, NOT to constrain generation.
+ */
 export const CROSS_TEXT_RELATIONSHIP_TYPES = [
   "supports_extends", // Text 2 provides additional support for Text 1's claim
   "contradicts_challenges", // Text 2 disagrees with or challenges Text 1
   "provides_example", // Text 2 gives a specific example of Text 1's general point
   "explains_mechanism", // Text 2 explains how/why something in Text 1 works
   "compares_contrasts", // Both texts discuss same topic but from different angles
-  "cause_effect", // Text 1 describes cause, Text 2 describes effect (or vice versa)
+  "cause_effect", // Text 1 describes cause, Text 2 describes effect
   "problem_solution", // Text 1 presents problem, Text 2 presents solution
   "general_specific", // Text 1 is general principle, Text 2 is specific application
 ] as const;
@@ -18,134 +27,236 @@ export const CROSS_TEXT_RELATIONSHIP_TYPES = [
 export type CrossTextRelationshipType = (typeof CROSS_TEXT_RELATIONSHIP_TYPES)[number];
 
 /**
- * Question stems for cross-text connection questions.
- * Based on official SAT patterns.
+ * Human-readable descriptions for each relationship type.
  */
-export const CROSS_TEXT_QUESTION_STEMS: Record<CrossTextRelationshipType, string[]> = {
-  supports_extends: [
-    "Based on the texts, how would the author of Text 2 most likely respond to the claim in Text 1?",
-    "Which choice best describes the relationship between Text 1 and Text 2?",
-    "How does Text 2 relate to Text 1?",
-  ],
-  contradicts_challenges: [
-    "Based on the texts, how would the author of Text 2 most likely respond to the argument made in Text 1?",
-    "Which choice best describes a key difference between the texts?",
-    "How would the author of Text 2 most likely view the claim in Text 1?",
-  ],
-  provides_example: [
-    "Which choice best describes the relationship between the texts?",
-    "How does Text 2 relate to the point made in Text 1?",
-    "Based on the texts, what is the relationship between the general principle in Text 1 and the example in Text 2?",
-  ],
-  explains_mechanism: [
-    "How does Text 2 build on Text 1?",
-    "Which choice best describes the relationship between Text 1 and Text 2?",
-    "Based on the texts, how does Text 2 relate to the phenomenon described in Text 1?",
-  ],
-  compares_contrasts: [
-    "Both texts discuss [TOPIC]. What is one difference between the perspectives presented in the two texts?",
-    "Which choice best describes a main difference between the texts?",
-    "What do the texts suggest about different approaches to [TOPIC]?",
-  ],
-  cause_effect: [
-    "Which choice best describes the relationship between Text 1 and Text 2?",
-    "How do the texts relate to each other in terms of causation?",
-    "Based on the texts, what can be inferred about the relationship between the event in Text 1 and the outcome in Text 2?",
-  ],
-  problem_solution: [
-    "How does Text 2 relate to the issue raised in Text 1?",
-    "Which choice best describes how Text 2 responds to the problem in Text 1?",
-    "Based on the texts, what is the relationship between the challenge described in Text 1 and the approach in Text 2?",
-  ],
-  general_specific: [
-    "Which choice best describes the relationship between the texts?",
-    "How does the specific case in Text 2 relate to the general principle in Text 1?",
-    "Based on the texts, how does Text 2 illustrate the concept presented in Text 1?",
-  ],
+export const RELATIONSHIP_TYPE_DESCRIPTIONS: Record<CrossTextRelationshipType, string> = {
+  supports_extends: "Text 2 provides additional evidence or support for the claim/argument made in Text 1",
+  contradicts_challenges: "Text 2 disagrees with, qualifies, or challenges the position in Text 1",
+  provides_example: "Text 2 offers a specific instance or illustration of the general point in Text 1",
+  explains_mechanism: "Text 2 explains the 'how' or 'why' behind the phenomenon described in Text 1",
+  compares_contrasts: "Both texts address the same topic but emphasize different aspects or perspectives",
+  cause_effect: "One text describes a cause/action, the other describes the resulting effect/outcome",
+  problem_solution: "One text identifies a problem or challenge, the other proposes or describes a solution",
+  general_specific: "One text presents a broad principle, the other shows its specific application",
 };
 
-/**
- * Passage length targets for cross-text questions.
- * Each text should be short (50-100 words).
- */
-export const CROSS_TEXT_PASSAGE_LENGTH = {
-  text1: { min: 50, max: 100 },
-  text2: { min: 50, max: 100 },
-};
+// ─────────────────────────────────────────────────────────
+// TOPIC CATEGORIES
+// ─────────────────────────────────────────────────────────
 
-/**
- * Distractor strategies specific to cross-text questions.
- */
-export const CROSS_TEXT_DISTRACTOR_PATTERNS = {
-  reverses_relationship: "States opposite of actual relationship (support vs. challenge)",
-  confuses_which_text: "Attributes content from Text 1 to Text 2 or vice versa",
-  too_extreme: "Overstates the relationship or uses absolute language",
-  superficial_similarity: "Notes surface-level similarity while missing key relationship",
-  partial_truth: "Describes one aspect correctly but misses main relationship",
-  wrong_scope: "Focuses on minor detail rather than main relationship",
-} as const;
-
-/**
- * Topic categories that work well for cross-text questions.
- */
 export const CROSS_TEXT_TOPIC_CATEGORIES = [
-  "scientific_research", // Two studies on related topics
-  "historical_perspectives", // Two views on same historical event/figure
-  "artistic_movements", // Two descriptions/interpretations
-  "environmental_issues", // Different aspects or solutions
-  "technological_impact", // Problem and innovation, or two perspectives
-  "social_phenomena", // Theory and example, or contrasting views
-  "educational_methods", // Different approaches or general vs. specific
-  "economic_concepts", // Principle and application
+  "scientific_research",
+  "historical_perspectives",
+  "artistic_movements",
+  "environmental_issues",
+  "technological_impact",
+  "social_phenomena",
+  "educational_methods",
+  "economic_concepts",
+  "psychological_research",
+  "literary_analysis",
 ] as const;
 
 export type CrossTextTopicCategory = (typeof CROSS_TEXT_TOPIC_CATEGORIES)[number];
 
+// ─────────────────────────────────────────────────────────
+// PASSAGE TYPES
+// ─────────────────────────────────────────────────────────
+
+export const PASSAGE_TYPES = [
+  "literary_narrative",
+  "social_science",
+  "natural_science",
+  "humanities",
+] as const;
+
+export type PassageType = (typeof PASSAGE_TYPES)[number];
+
+// ─────────────────────────────────────────────────────────
+// VERBALIZED SAMPLING PARAMETERS (Gaussian distributions)
+// ─────────────────────────────────────────────────────────
+
 /**
- * Sampled parameters for cross-text question generation.
+ * Parameters for verbalized sampling to create unique cross-text questions.
+ * Each uses Gaussian distribution to create natural variation.
  */
+export const CROSS_TEXT_PARAMS = {
+  // Text 1 complexity
+  text1Complexity: { mean: 0.5, stdDev: 0.2 },
+
+  // Text 2 complexity
+  text2Complexity: { mean: 0.5, stdDev: 0.2 },
+
+  // Relationship subtlety: how obvious the connection between texts is
+  relationshipSubtlety: { mean: 0.5, stdDev: 0.25 },
+
+  // Vocabulary level
+  vocabularyLevel: { mean: 0.5, stdDev: 0.2 },
+
+  // Argument complexity: how complex the reasoning/argument structure is
+  argumentComplexity: { mean: 0.5, stdDev: 0.2 },
+};
+
+// ─────────────────────────────────────────────────────────
+// DISTRACTOR STRATEGIES
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Strategies for generating plausible but incorrect cross-text answers.
+ */
+export const CROSS_TEXT_DISTRACTOR_STRATEGIES = {
+  reverses_relationship:
+    "States the opposite of the actual relationship (e.g., says 'supports' when it 'challenges').",
+  confuses_which_text:
+    "Attributes content or position from Text 1 to Text 2 or vice versa.",
+  too_extreme:
+    "Overstates the relationship using absolute language ('completely refutes', 'proves definitively').",
+  superficial_similarity:
+    "Notes a surface-level similarity while missing the deeper relationship.",
+  partial_truth:
+    "Describes one aspect of the relationship correctly but misses the main connection.",
+  wrong_scope:
+    "Focuses on a minor detail rather than the main relationship between the texts.",
+  misread_tone:
+    "Misinterprets the tone or attitude of one or both authors.",
+  plausible_but_wrong:
+    "Sounds reasonable but doesn't accurately describe the specific relationship.",
+} as const;
+
+export type CrossTextDistractorStrategy = keyof typeof CROSS_TEXT_DISTRACTOR_STRATEGIES;
+
+/**
+ * Distractor strategy combinations for cross-text questions.
+ */
+export const CROSS_TEXT_DISTRACTOR_COMBOS: CrossTextDistractorStrategy[][] = [
+  ["reverses_relationship", "confuses_which_text", "partial_truth"],
+  ["too_extreme", "superficial_similarity", "plausible_but_wrong"],
+  ["confuses_which_text", "wrong_scope", "plausible_but_wrong"],
+  ["reverses_relationship", "partial_truth", "wrong_scope"],
+  ["misread_tone", "too_extreme", "plausible_but_wrong"],
+];
+
+// ─────────────────────────────────────────────────────────
+// SAMPLED PARAMETERS INTERFACE
+// ─────────────────────────────────────────────────────────
+
 export interface SampledCrossTextParams {
-  relationshipType: CrossTextRelationshipType;
-  topicCategory: CrossTextTopicCategory;
-  passageType1: "literary_narrative" | "social_science" | "natural_science" | "humanities";
-  passageType2: "literary_narrative" | "social_science" | "natural_science" | "humanities";
+  // Difficulty factors (all use Gaussian)
   text1Complexity: number; // 0.0-1.0
   text2Complexity: number; // 0.0-1.0
-  relationshipComplexity: number; // 0.0-1.0 (how obvious the connection is)
-  distractorStrategies: [string, string, string];
+  relationshipSubtlety: number; // 0.0-1.0
+  vocabularyLevel: number; // 0.0-1.0
+  argumentComplexity: number; // 0.0-1.0
+
+  // CONTENT DIVERSITY - sampled to force variety
+  relationshipType: CrossTextRelationshipType; // The relationship between the two texts
+  passageType1: PassageType;
+  passageType2: PassageType;
+  topicCategory: CrossTextTopicCategory;
+
+  // Distractor strategies
+  distractorStrategies: [CrossTextDistractorStrategy, CrossTextDistractorStrategy, CrossTextDistractorStrategy];
+
+  // Target overall difficulty
   targetOverallDifficulty: number;
 }
 
+// ─────────────────────────────────────────────────────────
+// SAMPLING UTILITIES
+// ─────────────────────────────────────────────────────────
+
 /**
- * Generate sample cross-text parameters.
+ * Sample from a Gaussian distribution, clamped to [0, 1].
+ */
+export function sampleGaussian(mean: number, stdDev: number): number {
+  const u1 = Math.random();
+  const u2 = Math.random();
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  const value = mean + z * stdDev;
+  return Math.max(0, Math.min(1, value));
+}
+
+/**
+ * Sample uniformly from an array.
+ */
+export function sampleFrom<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * Sample a distractor strategy combination for cross-text.
+ */
+export function sampleCrossTextDistractorCombo(): [CrossTextDistractorStrategy, CrossTextDistractorStrategy, CrossTextDistractorStrategy] {
+  const combo = sampleFrom(CROSS_TEXT_DISTRACTOR_COMBOS);
+  return combo as [CrossTextDistractorStrategy, CrossTextDistractorStrategy, CrossTextDistractorStrategy];
+}
+
+/**
+ * Generate all sampled parameters for a cross-text question.
+ * Uses Gaussian distributions for difficulty factors.
+ * Randomly samples relationship type, topic, and passage types for content diversity.
  */
 export function sampleCrossTextParams(
   overrides?: Partial<SampledCrossTextParams>
 ): SampledCrossTextParams {
-  const relationshipType = overrides?.relationshipType ??
-    CROSS_TEXT_RELATIONSHIP_TYPES[Math.floor(Math.random() * CROSS_TEXT_RELATIONSHIP_TYPES.length)];
-
-  const topicCategory = overrides?.topicCategory ??
-    CROSS_TEXT_TOPIC_CATEGORIES[Math.floor(Math.random() * CROSS_TEXT_TOPIC_CATEGORIES.length)];
-
-  const passageTypes = ["social_science", "natural_science", "humanities"] as const;
-  const passageType1 = overrides?.passageType1 ??
-    passageTypes[Math.floor(Math.random() * passageTypes.length)];
-  const passageType2 = overrides?.passageType2 ?? passageType1; // Usually same type
-
   return {
-    relationshipType,
-    topicCategory,
-    passageType1,
-    passageType2,
-    text1Complexity: overrides?.text1Complexity ?? 0.5,
-    text2Complexity: overrides?.text2Complexity ?? 0.5,
-    relationshipComplexity: overrides?.relationshipComplexity ?? 0.5,
-    distractorStrategies: overrides?.distractorStrategies ?? [
-      "reverses_relationship",
-      "confuses_which_text",
-      "partial_truth",
-    ],
-    targetOverallDifficulty: overrides?.targetOverallDifficulty ?? 0.5,
+    // Difficulty factors use Gaussian sampling
+    text1Complexity:
+      overrides?.text1Complexity ??
+      sampleGaussian(CROSS_TEXT_PARAMS.text1Complexity.mean, CROSS_TEXT_PARAMS.text1Complexity.stdDev),
+
+    text2Complexity:
+      overrides?.text2Complexity ??
+      sampleGaussian(CROSS_TEXT_PARAMS.text2Complexity.mean, CROSS_TEXT_PARAMS.text2Complexity.stdDev),
+
+    relationshipSubtlety:
+      overrides?.relationshipSubtlety ??
+      sampleGaussian(CROSS_TEXT_PARAMS.relationshipSubtlety.mean, CROSS_TEXT_PARAMS.relationshipSubtlety.stdDev),
+
+    vocabularyLevel:
+      overrides?.vocabularyLevel ??
+      sampleGaussian(CROSS_TEXT_PARAMS.vocabularyLevel.mean, CROSS_TEXT_PARAMS.vocabularyLevel.stdDev),
+
+    argumentComplexity:
+      overrides?.argumentComplexity ??
+      sampleGaussian(CROSS_TEXT_PARAMS.argumentComplexity.mean, CROSS_TEXT_PARAMS.argumentComplexity.stdDev),
+
+    // CONTENT DIVERSITY - sample to force variety
+    relationshipType:
+      overrides?.relationshipType ?? sampleFrom(CROSS_TEXT_RELATIONSHIP_TYPES),
+
+    passageType1:
+      overrides?.passageType1 ?? sampleFrom(PASSAGE_TYPES),
+
+    passageType2:
+      overrides?.passageType2 ?? sampleFrom(PASSAGE_TYPES),
+
+    topicCategory:
+      overrides?.topicCategory ?? sampleFrom(CROSS_TEXT_TOPIC_CATEGORIES),
+
+    distractorStrategies:
+      overrides?.distractorStrategies ?? sampleCrossTextDistractorCombo(),
+
+    targetOverallDifficulty:
+      overrides?.targetOverallDifficulty ?? sampleGaussian(0.5, 0.15),
+  };
+}
+
+/**
+ * Compute rwDifficulty object from sampled cross-text params.
+ */
+export function computeCrossTextRwDifficulty(params: SampledCrossTextParams): {
+  passageComplexity: number;
+  inferenceDepth: number;
+  vocabularyLevel: number;
+  evidenceEvaluation: number;
+  synthesisRequired: number;
+} {
+  return {
+    passageComplexity: (params.text1Complexity + params.text2Complexity) / 2,
+    inferenceDepth: params.relationshipSubtlety,
+    vocabularyLevel: params.vocabularyLevel,
+    evidenceEvaluation: params.argumentComplexity,
+    synthesisRequired: params.relationshipSubtlety, // Cross-text requires synthesis
   };
 }

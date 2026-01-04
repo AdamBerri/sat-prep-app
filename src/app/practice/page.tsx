@@ -326,6 +326,27 @@ function PassageView({
 }
 
 // ─────────────────────────────────────────────────────────
+// GRAMMAR SENTENCE HELPER
+// ─────────────────────────────────────────────────────────
+
+function renderGrammarSentence(sentence: string): React.ReactNode {
+  const parts = sentence.split(/\[([^\]]+)\]/);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      return (
+        <span
+          key={i}
+          className="underline decoration-2 decoration-blue-500 underline-offset-4 font-medium bg-blue-50 px-1 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+// ─────────────────────────────────────────────────────────
 // ANSWER OPTION BUTTON
 // ─────────────────────────────────────────────────────────
 
@@ -1142,7 +1163,19 @@ function ExamScreen({
             {/* Question Prompt */}
             <div className="question-card p-4 sm:p-6">
               <div className="font-body text-base sm:text-lg text-[var(--ink-black)] leading-relaxed">
-                <MathText text={currentQuestion.prompt} />
+                {currentQuestion.grammarData?.sentenceWithUnderline ? (
+                  // Grammar question: render sentence with underlined portion highlighted
+                  <div className="space-y-4">
+                    <p className="font-body text-lg text-[var(--ink-black)] leading-relaxed">
+                      {renderGrammarSentence(currentQuestion.grammarData.sentenceWithUnderline)}
+                    </p>
+                    <p className="font-body text-base text-[var(--ink-faded)]">
+                      {currentQuestion.prompt}
+                    </p>
+                  </div>
+                ) : (
+                  <MathText text={currentQuestion.prompt} />
+                )}
               </div>
             </div>
 

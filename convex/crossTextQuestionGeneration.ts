@@ -8,12 +8,11 @@ import { Id } from "./_generated/dataModel";
 
 import {
   sampleCrossTextParams,
+  computeCrossTextRwDifficulty,
   type SampledCrossTextParams,
 } from "./crossTextTemplates";
 
-import {
-  generateCrossTextConnectionPrompt,
-} from "./newQuestionTypePrompts";
+import { getCrossTextPrompt } from "./crossTextPrompts";
 
 // ─────────────────────────────────────────────────────────
 // CROSS-TEXT QUESTION GENERATION PIPELINE
@@ -29,6 +28,43 @@ function getAnthropicClient() {
     throw new Error("ANTHROPIC_API_KEY environment variable is required");
   }
   return new Anthropic({ apiKey });
+}
+
+// ─────────────────────────────────────────────────────────
+// ANSWER SHUFFLING UTILITY
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Shuffle answer choices so the correct answer isn't always A.
+ * Returns new choices object and updated correctAnswer key.
+ */
+function shuffleAnswerChoices(
+  choices: { A: string; B: string; C: string; D: string },
+  correctAnswer: string
+): { shuffledChoices: { A: string; B: string; C: string; D: string }; newCorrectAnswer: string } {
+  const keys: ("A" | "B" | "C" | "D")[] = ["A", "B", "C", "D"];
+  const entries = keys.map((key) => ({ key, content: choices[key] }));
+
+  // Fisher-Yates shuffle
+  for (let i = entries.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [entries[i], entries[j]] = [entries[j], entries[i]];
+  }
+
+  // Find where the correct answer ended up
+  const correctContent = choices[correctAnswer as keyof typeof choices];
+  const newCorrectIndex = entries.findIndex((e) => e.content === correctContent);
+  const newCorrectAnswer = keys[newCorrectIndex];
+
+  // Build new choices object
+  const shuffledChoices = {
+    A: entries[0].content,
+    B: entries[1].content,
+    C: entries[2].content,
+    D: entries[3].content,
+  };
+
+  return { shuffledChoices, newCorrectAnswer };
 }
 
 // ─────────────────────────────────────────────────────────
@@ -68,9 +104,10 @@ async function generateCrossTextQuestionWithClaude(
   anthropic: Anthropic,
   params: SampledCrossTextParams
 ): Promise<GeneratedCrossTextQuestion> {
-  const prompt = generateCrossTextConnectionPrompt(params);
+  // Get the verbalized prompt for this cross-text question
+  const prompt = getCrossTextPrompt(params);
 
-  console.log(`  Generating cross-text question (${params.relationshipType})...`);
+  console.log(`  Generating cross-text question (difficulty: ${params.targetOverallDifficulty.toFixed(2)})...`);
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -103,7 +140,7 @@ async function generateCrossTextQuestionWithClaude(
 
   console.log(`    Text 1 length: ~${question.text1.content.split(/\s+/).length} words`);
   console.log(`    Text 2 length: ~${question.text2.content.split(/\s+/).length} words`);
-  console.log(`    Relationship: ${params.relationshipType}`);
+  console.log(`    Topic: ${params.topicCategory}`);
 
   return question;
 }
@@ -187,14 +224,15 @@ async function generateSingleCrossTextQuestion(
       const domain = "craft_and_structure";
       const skill = "cross_text_connections";
 
-      // Compute difficulty factors
-      const rwDifficulty = {
-        passageComplexity: (params.text1Complexity + params.text2Complexity) / 2,
-        inferenceDepth: params.relationshipComplexity,
-        vocabularyLevel: (params.text1Complexity + params.text2Complexity) / 2,
-        evidenceEvaluation: params.relationshipComplexity,
-        synthesisRequired: 0.7, // Cross-text requires synthesis by nature
-      };
+      // FIXED: Compute proper rwDifficulty using all sampled factors
+      const rwDifficulty = computeCrossTextRwDifficulty(params);
+
+      // Shuffle answer choices so correct answer isn't always A
+      const { shuffledChoices, newCorrectAnswer } = shuffleAnswerChoices(
+        question.choices,
+        question.correctAnswer
+      );
+      console.log(`    Shuffled: correct answer is now ${newCorrectAnswer}`);
 
       // Create the question
       // Note: For cross-text, we'll use passage1Id as the primary passage
@@ -208,18 +246,18 @@ async function generateSingleCrossTextQuestion(
           skill,
           prompt: question.questionStem,
           passageId: passage1Id, // Primary passage
-          correctAnswer: question.correctAnswer,
+          correctAnswer: newCorrectAnswer,
           options: [
-            { key: "A", content: question.choices.A, order: 0 },
-            { key: "B", content: question.choices.B, order: 1 },
-            { key: "C", content: question.choices.C, order: 2 },
-            { key: "D", content: question.choices.D, order: 3 },
+            { key: "A", content: shuffledChoices.A, order: 0 },
+            { key: "B", content: shuffledChoices.B, order: 1 },
+            { key: "C", content: shuffledChoices.C, order: 2 },
+            { key: "D", content: shuffledChoices.D, order: 3 },
           ],
           explanation: question.explanation,
           rwDifficulty,
           generationMetadata: {
             generatedAt: Date.now(),
-            agentVersion: "cross-text-v1",
+            agentVersion: "cross-text-v2",
             promptTemplate: "cross_text_connections",
             promptParameters: {
               ...params,
@@ -227,7 +265,8 @@ async function generateSingleCrossTextQuestion(
             },
             verbalizedSampling: {
               targetDifficultyDistribution: [
-                { factor: "relationshipComplexity", mean: 0.5, stdDev: 0.2 },
+                { factor: "relationshipSubtlety", mean: 0.5, stdDev: 0.25 },
+                { factor: "argumentComplexity", mean: 0.5, stdDev: 0.2 },
               ],
               sampledValues: params,
             },
@@ -239,7 +278,6 @@ async function generateSingleCrossTextQuestion(
             skill,
             "cross_text_connections",
             params.topicCategory,
-            params.relationshipType,
             "agent_generated",
             `passage2:${passage2Id}`, // Tag with second passage ID
           ],
@@ -286,18 +324,7 @@ async function generateSingleCrossTextQuestion(
  */
 export const generateCrossTextQuestion = internalAction({
   args: {
-    relationshipType: v.optional(
-      v.union(
-        v.literal("supports_extends"),
-        v.literal("contradicts_challenges"),
-        v.literal("provides_example"),
-        v.literal("explains_mechanism"),
-        v.literal("compares_contrasts"),
-        v.literal("cause_effect"),
-        v.literal("problem_solution"),
-        v.literal("general_specific")
-      )
-    ),
+    targetDifficulty: v.optional(v.number()),
     batchId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -307,13 +334,13 @@ export const generateCrossTextQuestion = internalAction({
 
     // Sample parameters with any overrides
     const params = sampleCrossTextParams({
-      relationshipType: args.relationshipType,
+      targetOverallDifficulty: args.targetDifficulty,
     });
 
     console.log(`  Sampled params:`, {
-      relationshipType: params.relationshipType,
       topicCategory: params.topicCategory,
-      relationshipComplexity: params.relationshipComplexity.toFixed(2),
+      relationshipSubtlety: params.relationshipSubtlety.toFixed(2),
+      targetDifficulty: params.targetOverallDifficulty.toFixed(2),
     });
 
     return await generateSingleCrossTextQuestion(ctx, anthropic, params, args.batchId);
@@ -342,7 +369,7 @@ export const batchGenerateCrossTextQuestions = internalAction({
       index: number;
       success: boolean;
       questionId?: string;
-      relationshipType?: string;
+      topicCategory?: string;
       error?: string;
     }> = [];
 
@@ -350,7 +377,7 @@ export const batchGenerateCrossTextQuestions = internalAction({
       // Sample fresh parameters for each question
       const params = sampleCrossTextParams();
 
-      console.log(`\n[${i + 1}/${args.count}] Generating cross-text (${params.relationshipType})...`);
+      console.log(`\n[${i + 1}/${args.count}] Generating cross-text (difficulty: ${params.targetOverallDifficulty.toFixed(2)})...`);
 
       const result = await generateSingleCrossTextQuestion(ctx, anthropic, params, batchId);
 
@@ -359,13 +386,13 @@ export const batchGenerateCrossTextQuestions = internalAction({
           index: i,
           success: true,
           questionId: result.questionId?.toString(),
-          relationshipType: params.relationshipType,
+          topicCategory: params.topicCategory,
         });
       } else {
         results.push({
           index: i,
           success: false,
-          relationshipType: params.relationshipType,
+          topicCategory: params.topicCategory,
           error: result.error,
         });
       }

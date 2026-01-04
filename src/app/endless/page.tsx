@@ -74,6 +74,34 @@ const RW_DOMAINS = [
 ];
 
 // ─────────────────────────────────────────────────────────
+// GRAMMAR SENTENCE RENDERER
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Render a grammar sentence with [underlined] portions styled.
+ * The pattern is: "Text before [underlined portion] text after"
+ */
+function renderGrammarSentence(sentence: string): React.ReactNode {
+  // Split by [bracketed] content
+  const parts = sentence.split(/\[([^\]]+)\]/);
+
+  return parts.map((part, i) => {
+    // Odd indices are the bracketed (underlined) portions
+    if (i % 2 === 1) {
+      return (
+        <span
+          key={i}
+          className="underline decoration-2 decoration-blue-500 underline-offset-4 font-medium bg-blue-50 px-1 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+// ─────────────────────────────────────────────────────────
 // MASTERY BADGE
 // ─────────────────────────────────────────────────────────
 
@@ -1074,7 +1102,7 @@ function PlayingScreen({
     );
   }
 
-  const { question, passage, mastery } = currentQuestion;
+  const { question, passage, passage2, mastery } = currentQuestion;
   const isReadingWriting = question.category === "reading_writing";
 
   return (
@@ -1148,7 +1176,7 @@ function PlayingScreen({
         {/* Passage/Figure panel (desktop) */}
         {isReadingWriting && (
           <div className="hidden lg:block lg:w-1/2 border-r border-[var(--paper-lines)] overflow-y-auto">
-            <PassageView passage={passage} figure={question.figure} />
+            <PassageView passage={passage} passage2={passage2} figure={question.figure} questionSkill={question.skill} />
           </div>
         )}
 
@@ -1205,7 +1233,7 @@ function PlayingScreen({
                     </button>
                   </div>
                   <div className="overflow-y-auto max-h-[calc(80vh-60px)]">
-                    <PassageView passage={passage} figure={question.figure} />
+                    <PassageView passage={passage} passage2={passage2} figure={question.figure} questionSkill={question.skill} />
                   </div>
                 </div>
               </div>
@@ -1225,9 +1253,21 @@ function PlayingScreen({
 
             {/* Question prompt */}
             <div className="card-paper p-6 rounded-xl">
-              <p className="font-body text-lg text-[var(--ink-black)] leading-relaxed">
-                <MathText text={question.prompt} />
-              </p>
+              {question.grammarData?.sentenceWithUnderline ? (
+                // Grammar question: render sentence with underlined portion highlighted
+                <div className="space-y-4">
+                  <p className="font-body text-lg text-[var(--ink-black)] leading-relaxed">
+                    {renderGrammarSentence(question.grammarData.sentenceWithUnderline)}
+                  </p>
+                  <p className="font-body text-base text-[var(--ink-faded)]">
+                    {question.prompt}
+                  </p>
+                </div>
+              ) : (
+                <p className="font-body text-lg text-[var(--ink-black)] leading-relaxed">
+                  <MathText text={question.prompt} />
+                </p>
+              )}
             </div>
 
             {/* Answer options */}

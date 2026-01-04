@@ -196,7 +196,26 @@ After generating questions, they must be reviewed before being shown to students
 - Question clarity
 - **Image verification** (for questions with figures) - Claude visually inspects images for issues like duplicate labels
 
-### Run Reviews
+### Batch Review (Recommended)
+
+The batch review system runs locally for better performance - 5 concurrent Claude calls instead of sequential processing.
+
+```bash
+# Review up to 25 pending questions (default)
+npm run review
+
+# Review up to 50 pending questions
+npm run review 50
+
+# Check review statistics
+npm run review:stats
+```
+
+**Performance**: 25 questions in ~30-60 seconds (vs 8-10 minutes with old sequential system)
+
+### Legacy Sequential Review
+
+For single-question reviews or when you need more control:
 
 ```bash
 # Review up to 10 pending questions (prioritizes questions with images)
@@ -215,7 +234,10 @@ npx convex run questionReview:reviewSingleQuestion '{"questionId": "...", "revie
 ### Check Review Status
 
 ```bash
-# Get count of questions by review status
+# Get detailed review statistics (pending, verified, needs_revision, rejected)
+npm run review:stats
+
+# Get count of questions by review status (legacy)
 npx convex run questionReviewMutations:getUnreviewedQuestionCount
 
 # Get questions needing manual review

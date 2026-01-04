@@ -274,6 +274,31 @@ function shouldReviewQuestion(question: Doc<"questions">): boolean {
 // CORE REVIEW ACTION
 // ─────────────────────────────────────────────────────────
 
+// Return type for reviewSingleQuestion
+interface ReviewResult {
+  success: boolean;
+  reviewStatus?: string;
+  isCorrect?: boolean;
+  error?: string;
+  autoImproved?: boolean;
+  improvementsApplied?: number;
+  verificationNotes?: string;
+  answerCorrected?: boolean;
+  confidenceScore?: number;
+}
+
+// Return type for reviewUnverifiedQuestions
+interface BatchReviewResult {
+  total: number;
+  successful: number;
+  results: Array<{
+    questionId: string;
+    success: boolean;
+    reviewStatus?: string;
+    error?: string;
+  }>;
+}
+
 /**
  * Review a single question using Claude.
  * Validates the answer, generates explanations, and updates the database.
@@ -288,7 +313,7 @@ export const reviewSingleQuestion = internalAction({
     ),
     skipAutoImprove: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<ReviewResult> => {
     console.log(`\nReviewing question ${args.questionId}...`);
 
     const anthropic = getAnthropicClient();
@@ -424,7 +449,7 @@ export const reviewSingleQuestion = internalAction({
           console.log(`  Found ${autoFixableIssues.length} auto-fixable issues, attempting improvement...`);
 
           // Attempt auto-improvement
-          const improveResult = await improveQuestion(ctx, {
+          const improveResult = await ctx.runAction(internal.questionReview.improveQuestion, {
             questionId: args.questionId,
             issues: autoFixableIssues,
           });
@@ -433,7 +458,7 @@ export const reviewSingleQuestion = internalAction({
             console.log(`  Improvement successful, re-verifying...`);
 
             // Re-verify the improved question
-            const reVerifyResult = await reviewSingleQuestion(ctx, {
+            const reVerifyResult = await ctx.runAction(internal.questionReview.reviewSingleQuestion, {
               questionId: args.questionId,
               reviewType: "post_improvement_verification",
               skipAutoImprove: true, // Prevent infinite loops
@@ -759,7 +784,7 @@ export const reviewUnverifiedQuestions = internalAction({
     category: v.optional(v.union(v.literal("reading_writing"), v.literal("math"))),
     prioritizeGraphing: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<BatchReviewResult> => {
     const limit = args.limit ?? 10;
 
     console.log(`\nStarting batch review of up to ${limit} unverified questions...`);
@@ -787,7 +812,7 @@ export const reviewUnverifiedQuestions = internalAction({
       const q = questions[i];
       console.log(`\n[${i + 1}/${questions.length}] Reviewing ${q._id}...`);
 
-      const result = await reviewSingleQuestion(ctx, {
+      const result = await ctx.runAction(internal.questionReview.reviewSingleQuestion, {
         questionId: q._id,
         reviewType: "initial_verification",
       });

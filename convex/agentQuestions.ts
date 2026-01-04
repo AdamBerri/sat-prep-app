@@ -106,6 +106,15 @@ export const createAgentQuestion = mutation({
         caption: v.optional(v.string()),
       })
     ),
+
+    // Grammar-specific display data (for Standard English Conventions questions)
+    grammarData: v.optional(
+      v.object({
+        sentenceWithUnderline: v.string(),
+        underlinedPortion: v.string(),
+        grammarRule: v.string(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     // Compute overall difficulty from factors
@@ -133,6 +142,7 @@ export const createAgentQuestion = mutation({
       mathDifficulty: args.mathDifficulty,
       rwDifficulty: args.rwDifficulty,
       prompt: args.prompt,
+      grammarData: args.grammarData,
       passageId: args.passageId,
       figure: args.figure,
       correctAnswer: args.correctAnswer,
@@ -216,6 +226,15 @@ export const createAgentQuestionInternal = internalMutation({
     generationMetadata: generationMetadataValidator,
     generationBatchId: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+
+    // Grammar-specific display data (for Standard English Conventions questions)
+    grammarData: v.optional(
+      v.object({
+        sentenceWithUnderline: v.string(),
+        underlinedPortion: v.string(),
+        grammarRule: v.string(),
+      })
+    ),
   },
   handler: async (ctx, args): Promise<Id<"questions">> => {
     // Compute overall difficulty from factors
@@ -243,6 +262,7 @@ export const createAgentQuestionInternal = internalMutation({
       mathDifficulty: args.mathDifficulty,
       rwDifficulty: args.rwDifficulty,
       prompt: args.prompt,
+      grammarData: args.grammarData,
       passageId: args.passageId,
       figure: args.figure,
       correctAnswer: args.correctAnswer,

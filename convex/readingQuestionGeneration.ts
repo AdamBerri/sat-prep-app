@@ -16,6 +16,7 @@ import {
 import {
   buildPassageGenerationPrompt,
   buildQuestionGenerationPrompt,
+  type ReadingOnlyQuestionType,
 } from "./readingQuestionPrompts";
 
 // Error stage types for DLQ
@@ -36,6 +37,43 @@ function getAnthropicClient() {
     throw new Error("ANTHROPIC_API_KEY environment variable is required");
   }
   return new Anthropic({ apiKey });
+}
+
+// ─────────────────────────────────────────────────────────
+// ANSWER SHUFFLING UTILITY
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Shuffle answer choices so the correct answer isn't always A.
+ * Returns new choices object and updated correctAnswer key.
+ */
+function shuffleAnswerChoices(
+  choices: { A: string; B: string; C: string; D: string },
+  correctAnswer: string
+): { shuffledChoices: { A: string; B: string; C: string; D: string }; newCorrectAnswer: string } {
+  const keys: ("A" | "B" | "C" | "D")[] = ["A", "B", "C", "D"];
+  const entries = keys.map((key) => ({ key, content: choices[key] }));
+
+  // Fisher-Yates shuffle
+  for (let i = entries.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [entries[i], entries[j]] = [entries[j], entries[i]];
+  }
+
+  // Find where the correct answer ended up
+  const correctContent = choices[correctAnswer as keyof typeof choices];
+  const newCorrectIndex = entries.findIndex((e) => e.content === correctContent);
+  const newCorrectAnswer = keys[newCorrectIndex];
+
+  // Build new choices object
+  const shuffledChoices = {
+    A: entries[0].content,
+    B: entries[1].content,
+    C: entries[2].content,
+    D: entries[3].content,
+  };
+
+  return { shuffledChoices, newCorrectAnswer };
 }
 
 // ─────────────────────────────────────────────────────────
@@ -142,8 +180,9 @@ async function generateQuestionWithClaude(
   passage: GeneratedPassage,
   params: SampledReadingParams
 ): Promise<GeneratedQuestion> {
+  // Note: This file only handles reading questions, not transitions/grammar/cross-text
   const prompt = buildQuestionGenerationPrompt(
-    params.questionType,
+    params.questionType as ReadingOnlyQuestionType,
     passage.passage,
     {
       mainIdea: passage.mainIdea,
@@ -282,6 +321,13 @@ async function generateSingleQuestion(
       // Map question type to domain and skill
       const { domain, skill } = mapQuestionTypeToDomainSkill(params.questionType);
 
+      // Shuffle answer choices so correct answer isn't always A
+      const { shuffledChoices, newCorrectAnswer } = shuffleAnswerChoices(
+        question.choices,
+        question.correctAnswer
+      );
+      console.log(`    Shuffled: correct answer is now ${newCorrectAnswer}`);
+
       // Create the question
       // Note: createAgentQuestionInternal computes difficulty and overallDifficulty
       // internally from rwDifficulty, so we don't pass them explicitly
@@ -294,12 +340,12 @@ async function generateSingleQuestion(
           skill,
           prompt: fullPrompt,
           passageId,
-          correctAnswer: question.correctAnswer,
+          correctAnswer: newCorrectAnswer,
           options: [
-            { key: "A", content: question.choices.A, order: 0 },
-            { key: "B", content: question.choices.B, order: 1 },
-            { key: "C", content: question.choices.C, order: 2 },
-            { key: "D", content: question.choices.D, order: 3 },
+            { key: "A", content: shuffledChoices.A, order: 0 },
+            { key: "B", content: shuffledChoices.B, order: 1 },
+            { key: "C", content: shuffledChoices.C, order: 2 },
+            { key: "D", content: shuffledChoices.D, order: 3 },
           ],
           explanation: question.explanation,
           wrongAnswerExplanations: question.distractorExplanations,
@@ -616,10 +662,10 @@ export const batchGenerateReadingQuestions = internalAction({
           });
         } else {
           console.log(`  [${index + 1}] ✗ Failed: ${result.error}`);
-          // Add to DLQ for retry
+          // Add to DLQ for retry (this file only handles reading types)
           try {
             await ctx.runMutation(internal.readingQuestionDLQ.addToDLQ, {
-              questionType: params.questionType,
+              questionType: params.questionType as ReadingOnlyQuestionType,
               passageType: params.passageType,
               sampledParams: {
                 questionType: params.questionType,

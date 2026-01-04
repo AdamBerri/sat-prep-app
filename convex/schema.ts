@@ -153,6 +153,16 @@ export default defineSchema({
     ),
 
     prompt: v.string(),
+
+    // Grammar-specific display data (for Standard English Conventions questions)
+    grammarData: v.optional(
+      v.object({
+        sentenceWithUnderline: v.string(), // Full sentence with [underlined] portion marked
+        underlinedPortion: v.string(), // The portion being tested
+        grammarRule: v.string(), // The grammar rule being tested
+      })
+    ),
+
     passageId: v.optional(v.id("passages")),
     lineReference: v.optional(
       v.object({

@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 // ─────────────────────────────────────────────────────────
 // ADMIN QUERIES - No user filtering, full database access
@@ -130,6 +131,19 @@ export const listQuestionsForAdmin = query({
           passage = await ctx.db.get(question.passageId);
         }
 
+        // Get passage2 for cross-text questions
+        let passage2 = null;
+        const passage2IdStr = (
+          question.generationMetadata as { promptParameters?: { passage2Id?: string } } | undefined
+        )?.promptParameters?.passage2Id;
+        if (passage2IdStr) {
+          try {
+            passage2 = await ctx.db.get(passage2IdStr as Id<"passages">);
+          } catch {
+            // passage2Id might be invalid, ignore
+          }
+        }
+
         // Get performance stats
         const stats = statsMap.get(question._id.toString()) ?? null;
 
@@ -161,6 +175,7 @@ export const listQuestionsForAdmin = query({
           options: optionsWithUrls,
           explanation,
           passage,
+          passage2,
           stats,
           figureUrl,
         };
@@ -311,6 +326,19 @@ export const getQuestionDetailForAdmin = query({
       passage = await ctx.db.get(question.passageId);
     }
 
+    // Get passage2 for cross-text questions
+    let passage2 = null;
+    const passage2IdStr = (
+      question.generationMetadata as { promptParameters?: { passage2Id?: string } } | undefined
+    )?.promptParameters?.passage2Id;
+    if (passage2IdStr) {
+      try {
+        passage2 = await ctx.db.get(passage2IdStr as Id<"passages">);
+      } catch {
+        // passage2Id might be invalid, ignore
+      }
+    }
+
     // Get performance stats
     const stats = await ctx.db
       .query("questionPerformanceStats")
@@ -353,6 +381,7 @@ export const getQuestionDetailForAdmin = query({
       options: optionsWithUrls,
       explanation,
       passage,
+      passage2,
       stats,
       figureUrl,
       figureMetadata,

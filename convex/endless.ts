@@ -682,6 +682,16 @@ export const getCurrentEndlessQuestion = query({
       passage = await ctx.db.get(question.passageId);
     }
 
+    // Get passage2 for cross-text questions (stored in tags)
+    let passage2 = null;
+    if (question.skill === "cross_text_connections" && question.tags) {
+      const passage2Tag = question.tags.find((tag: string) => tag.startsWith("passage2:"));
+      if (passage2Tag) {
+        const passage2Id = passage2Tag.replace("passage2:", "");
+        passage2 = await ctx.db.get(passage2Id as Id<"passages">);
+      }
+    }
+
     // Get skill mastery for this question's skill
     const mastery = await ctx.db
       .query("skillMastery")
@@ -696,6 +706,7 @@ export const getCurrentEndlessQuestion = query({
         options: options.sort((a, b) => a.order - b.order),
       },
       passage,
+      passage2,
       mastery: mastery
         ? {
             level: mastery.masteryLevel,

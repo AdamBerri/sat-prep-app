@@ -82,6 +82,16 @@ interface QuestionWithDetails {
     title?: string;
     author?: string;
   } | null;
+  passage2: {
+    content: string;
+    title?: string;
+    author?: string;
+  } | null;
+  grammarData?: {
+    sentenceWithUnderline: string;
+    underlinedPortion: string;
+    grammarRule: string;
+  };
   stats: {
     totalAttempts: number;
     correctAttempts: number;
@@ -458,6 +468,23 @@ export default function AdminQuestionsPage() {
   );
 }
 
+function renderGrammarSentence(sentence: string): React.ReactNode {
+  const parts = sentence.split(/\[([^\]]+)\]/);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      return (
+        <span
+          key={i}
+          className="underline decoration-2 decoration-blue-500 underline-offset-4 font-medium bg-blue-50 px-1 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 function QuestionCard({
   question,
   isExpanded,
@@ -614,23 +641,91 @@ function QuestionCard({
             </div>
           )}
 
-          {/* Passage (if reading question) */}
-          {question.passage && (
+          {/* Grammar Sentence (if grammar question) */}
+          {question.grammarData && (
             <div>
               <h4 className="font-display font-semibold text-[var(--ink-black)] mb-2">
-                Passage
-                {question.passage.title && `: ${question.passage.title}`}
+                Sentence
               </h4>
-              <div className="bg-white rounded-xl p-4 border border-[var(--paper-lines)] max-h-48 overflow-y-auto">
-                <p className="font-body text-sm text-[var(--ink-black)] whitespace-pre-wrap">
-                  {question.passage.content}
+              <div className="bg-white rounded-xl p-4 border border-[var(--paper-lines)]">
+                <p className="font-body text-[var(--ink-black)]">
+                  {renderGrammarSentence(question.grammarData.sentenceWithUnderline)}
                 </p>
-                {question.passage.author && (
-                  <p className="font-body text-xs text-[var(--ink-faded)] mt-2">
-                    — {question.passage.author}
-                  </p>
-                )}
+                <p className="font-body text-xs text-[var(--ink-faded)] mt-2">
+                  Grammar rule: {question.grammarData.grammarRule.replace(/_/g, " ")}
+                </p>
               </div>
+            </div>
+          )}
+
+          {/* Passage(s) for reading questions */}
+          {(question.passage || question.passage2) && (
+            <div>
+              <h4 className="font-display font-semibold text-[var(--ink-black)] mb-2">
+                {question.passage2 ? "Passages" : "Passage"}
+              </h4>
+
+              {question.passage2 ? (
+                // Cross-text: Two passages
+                <div className="space-y-4">
+                  {/* Text 1 */}
+                  <div className="bg-white rounded-xl p-4 border-l-4 border-green-500">
+                    <div className="font-display text-sm font-bold text-green-700 mb-2">
+                      Text 1
+                    </div>
+                    {question.passage?.title && (
+                      <h5 className="font-display font-semibold text-[var(--ink-black)] mb-1">
+                        {question.passage.title}
+                      </h5>
+                    )}
+                    <p className="font-body text-sm text-[var(--ink-black)] whitespace-pre-wrap">
+                      {question.passage?.content}
+                    </p>
+                    {question.passage?.author && (
+                      <p className="font-body text-xs text-[var(--ink-faded)] mt-2">
+                        — {question.passage.author}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Text 2 */}
+                  <div className="bg-white rounded-xl p-4 border-l-4 border-blue-500">
+                    <div className="font-display text-sm font-bold text-blue-700 mb-2">
+                      Text 2
+                    </div>
+                    {question.passage2?.title && (
+                      <h5 className="font-display font-semibold text-[var(--ink-black)] mb-1">
+                        {question.passage2.title}
+                      </h5>
+                    )}
+                    <p className="font-body text-sm text-[var(--ink-black)] whitespace-pre-wrap">
+                      {question.passage2?.content}
+                    </p>
+                    {question.passage2?.author && (
+                      <p className="font-body text-xs text-[var(--ink-faded)] mt-2">
+                        — {question.passage2.author}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                // Single passage
+                <div className="bg-white rounded-xl p-4 border border-[var(--paper-lines)] max-h-48 overflow-y-auto">
+                  {question.passage?.title && (
+                    <h5 className="font-display font-semibold text-[var(--ink-black)] mb-1">
+                      {question.passage.title}
+                    </h5>
+                  )}
+                  <p className="font-body text-sm text-[var(--ink-black)] whitespace-pre-wrap">
+                    {question.passage?.content}
+                  </p>
+                  {question.passage?.author && (
+                    <p className="font-body text-xs text-[var(--ink-faded)] mt-2">
+                      — {question.passage.author}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

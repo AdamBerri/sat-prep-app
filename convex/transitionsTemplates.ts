@@ -1,212 +1,53 @@
 // ─────────────────────────────────────────────────────────
 // TRANSITIONS TEMPLATES
 // ─────────────────────────────────────────────────────────
-// Templates for generating SAT questions that test students' ability
-// to choose effective transition words/phrases to connect ideas.
+// Verbalized sampling parameters for SAT Transitions questions.
+// Uses Gaussian distributions for difficulty factors.
+// NO hardcoded transition word lists - let Claude generate freely.
+
+// ─────────────────────────────────────────────────────────
+// RELATIONSHIP TYPES (for reference, not rigidity)
+// ─────────────────────────────────────────────────────────
 
 /**
  * Types of logical relationships that transitions express.
+ * These are for reference/prompting, NOT to constrain generation.
  */
 export const TRANSITION_RELATIONSHIP_TYPES = [
-  "addition", // Adding related information (furthermore, additionally, moreover)
-  "contrast", // Showing difference or opposition (however, nevertheless, conversely)
-  "cause_effect", // Showing causation (therefore, consequently, as a result)
-  "example", // Providing illustration (for example, for instance, specifically)
-  "clarification", // Rephrasing or explaining (in other words, that is, namely)
-  "temporal", // Showing time relationship (meanwhile, subsequently, previously)
-  "emphasis", // Stressing importance (indeed, in fact, notably)
-  "concession", // Acknowledging counterpoint (although, admittedly, granted)
-  "comparison", // Showing similarity (similarly, likewise, in the same way)
-  "conclusion", // Summing up (thus, in conclusion, ultimately)
+  "addition", // Adding related information
+  "contrast", // Showing difference or opposition
+  "cause_effect", // Showing causation
+  "example", // Providing illustration
+  "clarification", // Rephrasing or explaining
+  "temporal", // Showing time relationship
+  "emphasis", // Stressing importance
+  "concession", // Acknowledging counterpoint
+  "comparison", // Showing similarity
+  "conclusion", // Summing up
 ] as const;
 
 export type TransitionRelationshipType = (typeof TRANSITION_RELATIONSHIP_TYPES)[number];
 
 /**
- * Transition words/phrases organized by relationship type.
- * Based on SAT commonly tested transitions.
+ * Human-readable descriptions for each relationship type.
  */
-export const TRANSITIONS_BY_TYPE: Record<TransitionRelationshipType, string[]> = {
-  addition: [
-    "Additionally,",
-    "Furthermore,",
-    "Moreover,",
-    "In addition,",
-    "Also,",
-    "Likewise,",
-  ],
-  contrast: [
-    "However,",
-    "Nevertheless,",
-    "Nonetheless,",
-    "Conversely,",
-    "On the other hand,",
-    "In contrast,",
-    "Yet",
-    "Still,",
-  ],
-  cause_effect: [
-    "Therefore,",
-    "Consequently,",
-    "Thus,",
-    "As a result,",
-    "Accordingly,",
-    "Hence,",
-    "For this reason,",
-  ],
-  example: [
-    "For example,",
-    "For instance,",
-    "Specifically,",
-    "To illustrate,",
-    "In particular,",
-  ],
-  clarification: [
-    "In other words,",
-    "That is,",
-    "Namely,",
-    "To clarify,",
-    "More precisely,",
-  ],
-  temporal: [
-    "Meanwhile,",
-    "Subsequently,",
-    "Previously,",
-    "Afterward,",
-    "Eventually,",
-    "Initially,",
-    "Ultimately,",
-  ],
-  emphasis: [
-    "Indeed,",
-    "In fact,",
-    "Notably,",
-    "Particularly,",
-    "Especially,",
-  ],
-  concession: [
-    "Admittedly,",
-    "Granted,",
-    "To be sure,",
-    "Certainly,",
-  ],
-  comparison: [
-    "Similarly,",
-    "Likewise,",
-    "In the same way,",
-    "Equally,",
-  ],
-  conclusion: [
-    "In conclusion,",
-    "Ultimately,",
-    "Finally,",
-    "In summary,",
-  ],
+export const RELATIONSHIP_TYPE_DESCRIPTIONS: Record<TransitionRelationshipType, string> = {
+  addition: "Adding related information to support the same point (furthermore, additionally, moreover)",
+  contrast: "Presenting opposing or different information (however, nevertheless, conversely)",
+  cause_effect: "Showing a result or consequence of prior information (therefore, consequently, thus)",
+  example: "Providing a specific instance of a general statement (for example, for instance, specifically)",
+  clarification: "Restating or explaining in different terms (in other words, that is, namely)",
+  temporal: "Indicating time sequence or simultaneous events (meanwhile, subsequently, previously)",
+  emphasis: "Stressing or highlighting important information (indeed, in fact, notably)",
+  concession: "Acknowledging a counterpoint before making a contrasting point (admittedly, granted)",
+  comparison: "Showing similarity between two things (similarly, likewise, in the same way)",
+  conclusion: "Summarizing or reaching a final point (thus, in conclusion, ultimately)",
 };
 
-/**
- * Question format for transitions questions.
- * The blank represents where the transition should go.
- */
-export interface TransitionQuestionFormat {
-  sentenceBefore: string; // The sentence before the transition
-  sentenceAfter: string; // The sentence after the transition
-  relationshipType: TransitionRelationshipType;
-  correctTransition: string;
-  distractorTransitions: string[]; // 3 wrong transitions from different relationship types
-}
+// ─────────────────────────────────────────────────────────
+// TOPIC CATEGORIES
+// ─────────────────────────────────────────────────────────
 
-/**
- * Context scenarios that require specific transition types.
- */
-export const TRANSITION_CONTEXT_SCENARIOS: Record<TransitionRelationshipType, {
-  description: string;
-  exampleBefore: string;
-  exampleAfter: string;
-}> = {
-  addition: {
-    description: "Adding related information to support the same point",
-    exampleBefore: "The study showed that regular exercise improves cardiovascular health.",
-    exampleAfter: "it found that physical activity enhances mental well-being.",
-  },
-  contrast: {
-    description: "Presenting opposing or different information",
-    exampleBefore: "Many scientists supported the new theory.",
-    exampleAfter: "some researchers remained skeptical of its implications.",
-  },
-  cause_effect: {
-    description: "Showing a result or consequence of prior information",
-    exampleBefore: "The drought lasted for three consecutive years.",
-    exampleAfter: "crop yields declined by nearly 40 percent.",
-  },
-  example: {
-    description: "Providing a specific instance of a general statement",
-    exampleBefore: "The museum features artifacts from various ancient civilizations.",
-    exampleAfter: "visitors can see pottery from Mesopotamia and sculptures from Greece.",
-  },
-  clarification: {
-    description: "Restating or explaining in different terms",
-    exampleBefore: "The process of photosynthesis converts light energy into chemical energy.",
-    exampleAfter: "plants use sunlight to produce glucose.",
-  },
-  temporal: {
-    description: "Indicating time sequence or simultaneous events",
-    exampleBefore: "The team analyzed the initial data from the experiment.",
-    exampleAfter: "they began preparing for the second phase of research.",
-  },
-  emphasis: {
-    description: "Stressing or highlighting important information",
-    exampleBefore: "The discovery had significant implications for climate science.",
-    exampleAfter: "it challenged several long-held assumptions about ocean currents.",
-  },
-  concession: {
-    description: "Acknowledging a counterpoint before making a contrasting point",
-    exampleBefore: "The new policy has some drawbacks.",
-    exampleAfter: "its benefits outweigh the costs.",
-  },
-  comparison: {
-    description: "Showing similarity between two things",
-    exampleBefore: "Urban areas experienced rapid population growth.",
-    exampleAfter: "suburban regions saw significant demographic increases.",
-  },
-  conclusion: {
-    description: "Summarizing or reaching a final point",
-    exampleBefore: "The evidence from multiple studies points in the same direction.",
-    exampleAfter: "the hypothesis appears to be well-supported.",
-  },
-};
-
-/**
- * Generate distractor transitions for a given correct transition type.
- * Returns 3 transitions from different (incorrect) relationship types.
- */
-export function generateDistractorTransitions(
-  correctType: TransitionRelationshipType
-): string[] {
-  // Common wrong transition types for each correct type
-  const wrongTypeMapping: Record<TransitionRelationshipType, TransitionRelationshipType[]> = {
-    addition: ["contrast", "cause_effect", "clarification"],
-    contrast: ["addition", "comparison", "cause_effect"],
-    cause_effect: ["addition", "contrast", "temporal"],
-    example: ["clarification", "cause_effect", "conclusion"],
-    clarification: ["example", "cause_effect", "emphasis"],
-    temporal: ["cause_effect", "contrast", "addition"],
-    emphasis: ["clarification", "addition", "cause_effect"],
-    concession: ["addition", "cause_effect", "emphasis"],
-    comparison: ["contrast", "addition", "clarification"],
-    conclusion: ["addition", "example", "cause_effect"],
-  };
-
-  const wrongTypes = wrongTypeMapping[correctType];
-  return wrongTypes.map((type) => {
-    const transitions = TRANSITIONS_BY_TYPE[type];
-    return transitions[Math.floor(Math.random() * transitions.length)];
-  });
-}
-
-/**
- * Topic categories for transition questions.
- */
 export const TRANSITION_TOPIC_CATEGORIES = [
   "scientific_research",
   "historical_events",
@@ -216,49 +57,187 @@ export const TRANSITION_TOPIC_CATEGORIES = [
   "cultural_phenomena",
   "economic_concepts",
   "literary_analysis",
+  "psychological_research",
+  "artistic_movements",
 ] as const;
 
 export type TransitionTopicCategory = (typeof TRANSITION_TOPIC_CATEGORIES)[number];
 
+// ─────────────────────────────────────────────────────────
+// VERBALIZED SAMPLING PARAMETERS (Gaussian distributions)
+// ─────────────────────────────────────────────────────────
+
 /**
- * Sampled parameters for transition question generation.
+ * Parameters for verbalized sampling to create unique transitions questions.
+ * Each uses Gaussian distribution to create natural variation.
  */
+export const TRANSITIONS_PARAMS = {
+  // Sentence complexity: how complex the sentences around the transition are
+  sentenceComplexity: { mean: 0.5, stdDev: 0.2 },
+
+  // Relationship subtlety: how obvious the logical relationship is
+  relationshipSubtlety: { mean: 0.5, stdDev: 0.25 },
+
+  // Vocabulary level: difficulty of words used
+  vocabularyLevel: { mean: 0.5, stdDev: 0.2 },
+
+  // Context density: how much context helps/hinders determining the transition
+  contextDensity: { mean: 0.5, stdDev: 0.2 },
+
+  // Passage length factor
+  passageLength: { mean: 0.5, stdDev: 0.15 },
+};
+
+// ─────────────────────────────────────────────────────────
+// DISTRACTOR STRATEGIES
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Strategies for generating plausible but incorrect transition choices.
+ */
+export const TRANSITIONS_DISTRACTOR_STRATEGIES = {
+  wrong_relationship:
+    "Uses a transition indicating the wrong logical relationship (e.g., contrast instead of addition).",
+  opposite_meaning:
+    "Uses a transition that indicates the opposite relationship (e.g., 'however' when 'furthermore' is needed).",
+  too_strong:
+    "Uses an overly emphatic or absolute transition for a subtle relationship.",
+  too_weak:
+    "Uses a weak or vague transition when a stronger connection is needed.",
+  wrong_register:
+    "Uses a transition that's too informal or formal for the context.",
+  redundant:
+    "Uses a transition that repeats information already expressed in the passage.",
+  plausible_but_wrong:
+    "Uses a common transition that sounds acceptable but doesn't fit the specific logical relationship.",
+} as const;
+
+export type TransitionsDistractorStrategy = keyof typeof TRANSITIONS_DISTRACTOR_STRATEGIES;
+
+/**
+ * Distractor strategy combinations for transitions questions.
+ */
+export const TRANSITIONS_DISTRACTOR_COMBOS: TransitionsDistractorStrategy[][] = [
+  ["wrong_relationship", "opposite_meaning", "plausible_but_wrong"],
+  ["opposite_meaning", "too_strong", "plausible_but_wrong"],
+  ["wrong_relationship", "too_weak", "redundant"],
+  ["too_strong", "too_weak", "plausible_but_wrong"],
+  ["opposite_meaning", "wrong_register", "plausible_but_wrong"],
+];
+
+// ─────────────────────────────────────────────────────────
+// SAMPLED PARAMETERS INTERFACE
+// ─────────────────────────────────────────────────────────
+
 export interface SampledTransitionParams {
-  relationshipType: TransitionRelationshipType;
-  topicCategory: TransitionTopicCategory;
-  correctTransition: string;
-  distractorTransitions: string[];
+  // Difficulty factors (all use Gaussian)
   sentenceComplexity: number; // 0.0-1.0
-  relationshipClarityLevel: number; // 0.0-1.0 (how obvious the relationship is)
+  relationshipSubtlety: number; // 0.0-1.0
+  vocabularyLevel: number; // 0.0-1.0
+  contextDensity: number; // 0.0-1.0
+  passageLength: number; // 0.0-1.0
+
+  // CONTENT DIVERSITY - sampled to force variety
+  relationshipType: TransitionRelationshipType; // Which logical relationship to test
+  topicCategory: TransitionTopicCategory;
+
+  // Distractor strategies
+  distractorStrategies: [TransitionsDistractorStrategy, TransitionsDistractorStrategy, TransitionsDistractorStrategy];
+
+  // Target overall difficulty
   targetOverallDifficulty: number;
 }
 
+// ─────────────────────────────────────────────────────────
+// SAMPLING UTILITIES
+// ─────────────────────────────────────────────────────────
+
 /**
- * Generate sampled transition parameters.
+ * Sample from a Gaussian distribution, clamped to [0, 1].
+ */
+export function sampleGaussian(mean: number, stdDev: number): number {
+  const u1 = Math.random();
+  const u2 = Math.random();
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  const value = mean + z * stdDev;
+  return Math.max(0, Math.min(1, value));
+}
+
+/**
+ * Sample uniformly from an array.
+ */
+export function sampleFrom<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * Sample a distractor strategy combination for transitions.
+ */
+export function sampleTransitionsDistractorCombo(): [TransitionsDistractorStrategy, TransitionsDistractorStrategy, TransitionsDistractorStrategy] {
+  const combo = sampleFrom(TRANSITIONS_DISTRACTOR_COMBOS);
+  return combo as [TransitionsDistractorStrategy, TransitionsDistractorStrategy, TransitionsDistractorStrategy];
+}
+
+/**
+ * Generate all sampled parameters for a transitions question.
+ * Uses Gaussian distributions for difficulty factors.
+ * Randomly samples relationship type and topic for content diversity.
  */
 export function sampleTransitionParams(
   overrides?: Partial<SampledTransitionParams>
 ): SampledTransitionParams {
-  const relationshipType = overrides?.relationshipType ??
-    TRANSITION_RELATIONSHIP_TYPES[Math.floor(Math.random() * TRANSITION_RELATIONSHIP_TYPES.length)];
-
-  const topicCategory = overrides?.topicCategory ??
-    TRANSITION_TOPIC_CATEGORIES[Math.floor(Math.random() * TRANSITION_TOPIC_CATEGORIES.length)];
-
-  const possibleTransitions = TRANSITIONS_BY_TYPE[relationshipType];
-  const correctTransition = overrides?.correctTransition ??
-    possibleTransitions[Math.floor(Math.random() * possibleTransitions.length)];
-
-  const distractorTransitions = overrides?.distractorTransitions ??
-    generateDistractorTransitions(relationshipType);
-
   return {
-    relationshipType,
-    topicCategory,
-    correctTransition,
-    distractorTransitions,
-    sentenceComplexity: overrides?.sentenceComplexity ?? 0.5,
-    relationshipClarityLevel: overrides?.relationshipClarityLevel ?? 0.5,
-    targetOverallDifficulty: overrides?.targetOverallDifficulty ?? 0.5,
+    // Difficulty factors use Gaussian sampling
+    sentenceComplexity:
+      overrides?.sentenceComplexity ??
+      sampleGaussian(TRANSITIONS_PARAMS.sentenceComplexity.mean, TRANSITIONS_PARAMS.sentenceComplexity.stdDev),
+
+    relationshipSubtlety:
+      overrides?.relationshipSubtlety ??
+      sampleGaussian(TRANSITIONS_PARAMS.relationshipSubtlety.mean, TRANSITIONS_PARAMS.relationshipSubtlety.stdDev),
+
+    vocabularyLevel:
+      overrides?.vocabularyLevel ??
+      sampleGaussian(TRANSITIONS_PARAMS.vocabularyLevel.mean, TRANSITIONS_PARAMS.vocabularyLevel.stdDev),
+
+    contextDensity:
+      overrides?.contextDensity ??
+      sampleGaussian(TRANSITIONS_PARAMS.contextDensity.mean, TRANSITIONS_PARAMS.contextDensity.stdDev),
+
+    passageLength:
+      overrides?.passageLength ??
+      sampleGaussian(TRANSITIONS_PARAMS.passageLength.mean, TRANSITIONS_PARAMS.passageLength.stdDev),
+
+    // CONTENT DIVERSITY - sample relationship type to force variety
+    relationshipType:
+      overrides?.relationshipType ?? sampleFrom(TRANSITION_RELATIONSHIP_TYPES),
+
+    topicCategory:
+      overrides?.topicCategory ?? sampleFrom(TRANSITION_TOPIC_CATEGORIES),
+
+    distractorStrategies:
+      overrides?.distractorStrategies ?? sampleTransitionsDistractorCombo(),
+
+    targetOverallDifficulty:
+      overrides?.targetOverallDifficulty ?? sampleGaussian(0.5, 0.15),
+  };
+}
+
+/**
+ * Compute rwDifficulty object from sampled transitions params.
+ */
+export function computeTransitionsRwDifficulty(params: SampledTransitionParams): {
+  passageComplexity: number;
+  inferenceDepth: number;
+  vocabularyLevel: number;
+  evidenceEvaluation: number;
+  synthesisRequired: number;
+} {
+  return {
+    passageComplexity: params.sentenceComplexity,
+    inferenceDepth: params.relationshipSubtlety,
+    vocabularyLevel: params.vocabularyLevel,
+    evidenceEvaluation: params.contextDensity,
+    synthesisRequired: params.passageLength,
   };
 }
