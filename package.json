@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "npx convex codegen --typecheck=disable && next build",
+    "build": "next build",
+    "build:deploy": "npx convex deploy --cmd 'next build'",
     "start": "next start",
     "lint": "eslint .",
     "convex": "convex dev",
