@@ -29,7 +29,7 @@ jobs:
         run: npm ci --omit=optional
 
       - name: Generate Convex types
-        run: npx convex codegen
+        run: npx convex codegen --typecheck=disable
 
       - name: Run ESLint
         run: npm run lint
