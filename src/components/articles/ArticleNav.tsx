@@ -13,7 +13,7 @@ export default function ArticleNav() {
             <Leaf className="w-6 h-6 text-white" />
           </div>
           <span className="font-display text-2xl font-bold text-[var(--ink-black)]">
-            the1600Club
+            the1600club
           </span>
         </Link>
 

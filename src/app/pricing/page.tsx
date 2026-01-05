@@ -61,7 +61,7 @@ function PricingPageContent() {
               <Leaf className="w-6 h-6 text-white" />
             </div>
             <span className="font-display text-2xl font-bold text-[var(--ink-black)]">
-              the1600Club
+              the1600club
             </span>
           </Link>
 
@@ -332,7 +332,7 @@ function PricingPageContent() {
       <section className="py-16 px-6 bg-gradient-to-br from-[var(--grass-medium)] to-[var(--forest)]">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
-            Ready to Join the1600Club?
+            Ready to Join the1600club?
           </h2>
           <p className="font-body text-lg text-white/80 mb-8">
             Start your journey today with our most popular annual plan.

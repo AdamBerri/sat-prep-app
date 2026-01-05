@@ -5,11 +5,11 @@ import ArticleCard from "@/components/articles/ArticleCard";
 import ArticleNav from "@/components/articles/ArticleNav";
 
 export const metadata: Metadata = {
-  title: "SAT Prep Articles & Strategies | the1600Club",
+  title: "SAT Prep Articles & Strategies | the1600club",
   description:
-    "Expert SAT prep strategies, study tips, and test-taking advice to help you achieve your best score. Free resources from the1600Club.",
+    "Expert SAT prep strategies, study tips, and test-taking advice to help you achieve your best score. Free resources from the1600club.",
   openGraph: {
-    title: "SAT Prep Articles & Strategies | the1600Club",
+    title: "SAT Prep Articles & Strategies | the1600club",
     description: "Expert SAT prep strategies and study tips.",
     type: "website",
   },
@@ -79,10 +79,10 @@ export default function ArticlesPage() {
               <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
                 <BookOpen className="w-6 h-6 text-white" />
               </div>
-              <span className="font-display text-xl font-bold">the1600Club</span>
+              <span className="font-display text-xl font-bold">the1600club</span>
             </div>
             <p className="font-body text-white/60 text-sm">
-              © 2024 the1600Club. Every question brings you closer to 1600.
+              © 2024 the1600club. Every question brings you closer to 1600.
             </p>
           </div>
         </div>

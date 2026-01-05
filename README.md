@@ -1,4 +1,4 @@
-# the1600Club - SAT Prep
+# the1600club - SAT Prep
 
 Join the club. Get the score. A gamified SAT preparation app that makes studying addictive. Built with Next.js, Convex, and Clerk.
 

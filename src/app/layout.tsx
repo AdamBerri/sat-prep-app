@@ -19,13 +19,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <ClerkProvider appearance={clerkAppearance}>
       <html lang="en">
         <head>
-          <title>the1600Club - Join the club. Get the score.</title>
+          <title>the1600club - Join the club. Get the score.</title>
           <meta name="description" content="Your path to the perfect SAT score. Gamified practice, adaptive learning, unlimited questions. Level up to 1600." />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="theme-color" content="#8B4513" />
           <meta name="apple-mobile-web-app-capable" content="yes" />
           <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-          <meta name="apple-mobile-web-app-title" content="the1600Club" />
+          <meta name="apple-mobile-web-app-title" content="the1600club" />
           <link rel="manifest" href="/manifest.json" />
           <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
           <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />

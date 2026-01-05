@@ -20,7 +20,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../convex/_generated/api.mjs";
+import { api } from "../convex/_generated/api.js";
 
 // ─────────────────────────────────────────────────────────
 // CONFIGURATION

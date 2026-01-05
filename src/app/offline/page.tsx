@@ -31,7 +31,7 @@ export default function OfflinePage() {
         </button>
 
         <p className="mt-8 text-sm text-[var(--wood-brown)]/50">
-          the1600Club needs an internet connection to load your practice questions and sync your progress.
+          the1600club needs an internet connection to load your practice questions and sync your progress.
         </p>
       </div>
     </div>

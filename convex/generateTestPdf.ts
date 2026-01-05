@@ -339,7 +339,7 @@ function generatePdfDocument(
   pdf.setFontSize(SMALL_SIZE);
   pdf.setTextColor(128);
   pdf.text(
-    "© the1600Club - For personal use only",
+    "© the1600club - For personal use only",
     PAGE_WIDTH / 2,
     PAGE_HEIGHT - 50,
     { align: "center" }

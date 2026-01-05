@@ -36,7 +36,11 @@
     "official:clear": "npx convex run officialQuestions:clearAll",
     "generate:icons": "node scripts/generate-icons.mjs",
     "review": "node scripts/review-questions.mjs",
-    "review:stats": "npx convex run questionReviewBatch:getReviewStats"
+    "review:stats": "npx convex run questionReviewBatch:getReviewStats",
+    "export:questions": "node scripts/export-questions.mjs",
+    "export:stats": "npx convex run questionExport:getExportStats",
+    "import:questions": "node scripts/import-questions.mjs",
+    "import:prod-stats": "npx convex run questionImport:getImportStats"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

@@ -45,7 +45,7 @@ function BookingSuccessContent() {
 
     const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//the1600Club//Tutoring//EN
+PRODID:-//the1600club//Tutoring//EN
 BEGIN:VEVENT
 DTSTART:${formatICSDate(startDate)}
 DTEND:${formatICSDate(endDate)}
