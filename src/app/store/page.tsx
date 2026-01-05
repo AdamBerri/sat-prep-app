@@ -122,7 +122,7 @@ function StorePageContent() {
               <Leaf className="w-6 h-6 text-white" />
             </div>
             <span className="font-display text-2xl font-bold text-[var(--ink-black)]">
-              1600Club
+              the1600Club
             </span>
           </Link>
 

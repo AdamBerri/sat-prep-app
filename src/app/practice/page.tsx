@@ -1014,7 +1014,7 @@ function ExamScreen({
             <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <Leaf className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
               <span className="font-display text-base sm:text-lg font-bold text-white hidden sm:block">
-                1600Club
+                the1600Club
               </span>
             </Link>
             <div className="h-6 w-px bg-white/20 hidden sm:block" />

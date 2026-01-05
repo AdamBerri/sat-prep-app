@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency: "usd",
             product_data: {
-              name: "1600Club Tutoring Session",
+              name: "the1600Club Tutoring Session",
               description: `1.5 hour 1-on-1 SAT tutoring session with ${bookingResult.tutorName}`,
             },
             unit_amount: bookingResult.amount, // Amount in cents

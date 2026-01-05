@@ -44,7 +44,7 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
               <Leaf className="w-6 h-6 text-white" />
             </div>
             <span className="font-display text-2xl font-bold text-[var(--ink-black)]">
-              1600Club
+              the1600Club
             </span>
           </div>
 
@@ -393,7 +393,7 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
                   <Leaf className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="font-display text-xl font-bold text-[var(--ink-black)]">
-                  1600Club
+                  the1600Club
                 </h3>
               </div>
               <div className="text-center mb-6">
@@ -686,10 +686,10 @@ export default function LandingPage({ onStartPractice }: LandingPageProps) {
               <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
                 <Leaf className="w-6 h-6 text-white" />
               </div>
-              <span className="font-display text-xl font-bold">1600Club</span>
+              <span className="font-display text-xl font-bold">the1600Club</span>
             </div>
             <p className="font-body text-white/60 text-sm">
-              © 2024 1600Club. Every question brings you closer to 1600.
+              © 2024 the1600Club. Every question brings you closer to 1600.
             </p>
           </div>
         </div>

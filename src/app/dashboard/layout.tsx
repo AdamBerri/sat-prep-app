@@ -96,7 +96,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <Leaf className="w-5 h-5 text-white" />
               </div>
               <span className="font-display text-xl font-bold text-white">
-                1600Club
+                the1600Club
               </span>
             </Link>
             <button
@@ -170,7 +170,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <Link href="/dashboard" className="flex items-center gap-2">
             <Leaf className="w-6 h-6 text-[var(--grass-dark)]" />
             <span className="font-display text-lg font-bold text-[var(--ink-black)]">
-              1600Club
+              the1600Club
             </span>
           </Link>
           <UserButton

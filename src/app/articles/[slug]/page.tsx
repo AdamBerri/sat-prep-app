@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { frontmatter } = article;
 
   return {
-    title: `${frontmatter.title} | 1600Club`,
+    title: `${frontmatter.title} | the1600Club`,
     description: frontmatter.description,
     authors: [{ name: frontmatter.author }],
     openGraph: {
@@ -76,11 +76,11 @@ export default async function ArticlePage({ params }: Props) {
     description: article.frontmatter.description,
     author: {
       "@type": "Organization",
-      name: "1600Club",
+      name: "the1600Club",
     },
     publisher: {
       "@type": "Organization",
-      name: "1600Club",
+      name: "the1600Club",
     },
     datePublished: article.frontmatter.date,
     dateModified: article.frontmatter.lastUpdated || article.frontmatter.date,
@@ -169,10 +169,10 @@ export default async function ArticlePage({ params }: Props) {
                 <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
                   <BookOpen className="w-6 h-6 text-white" />
                 </div>
-                <span className="font-display text-xl font-bold">1600Club</span>
+                <span className="font-display text-xl font-bold">the1600Club</span>
               </div>
               <p className="font-body text-white/60 text-sm">
-                © 2024 1600Club. Every question brings you closer to 1600.
+                © 2024 the1600Club. Every question brings you closer to 1600.
               </p>
             </div>
           </div>

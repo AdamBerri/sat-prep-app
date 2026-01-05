@@ -1,4 +1,4 @@
-# SAT Prep App - Vercel Deployment Guide
+# the1600Club - Vercel Deployment Guide
 
 ## Prerequisites
 
