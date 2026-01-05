@@ -4,7 +4,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Package manager files
+# Package manager files (keep ONE lock file committed for reproducible builds)
+# package-lock.json  # COMMIT THIS - needed for CI
 yarn.lock
 pnpm-lock.yaml
 
