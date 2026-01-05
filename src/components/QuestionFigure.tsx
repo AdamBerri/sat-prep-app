@@ -58,7 +58,6 @@ export function QuestionFigure({
   return (
     <figure className={className}>
       <div className="bg-white rounded-lg border border-[var(--paper-lines)] overflow-hidden shadow-sm">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageUrl}
           alt={caption || `${figureType || "Figure"} for this question`}
