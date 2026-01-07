@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -24,6 +24,10 @@ import {
   SortDesc,
   X,
   Loader2,
+  ThumbsUp,
+  ThumbsDown,
+  Users,
+  Target,
 } from "lucide-react";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { MathText } from "@/components/MathText";
@@ -120,6 +124,7 @@ interface QuestionWithDetails {
 function AdminQuestionsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const setReviewStatus = useMutation(api.admin.setQuestionReviewStatus);
 
   // Initialize filters from URL params
   const [filters, setFilters] = useState({
@@ -235,6 +240,13 @@ function AdminQuestionsContent() {
     if (questionsData?.nextCursor !== null) {
       setCursor(questionsData?.nextCursor ?? undefined);
     }
+  };
+
+  const handleUpdateStatus = async (
+    questionId: Id<"questions">,
+    status: "verified" | "rejected" | "needs_revision"
+  ) => {
+    await setReviewStatus({ questionId, reviewStatus: status });
   };
 
   return (
@@ -448,6 +460,7 @@ function AdminQuestionsContent() {
                   expandedQuestion === question._id ? null : question._id
                 )
               }
+              onUpdateStatus={handleUpdateStatus}
             />
           ))
         )}
@@ -490,10 +503,12 @@ function QuestionCard({
   question,
   isExpanded,
   onToggle,
+  onUpdateStatus,
 }: {
   question: QuestionWithDetails;
   isExpanded: boolean;
   onToggle: () => void;
+  onUpdateStatus: (questionId: Id<"questions">, status: "verified" | "rejected" | "needs_revision") => void;
 }) {
   const reviewStatusConfig: Record<
     string,
@@ -531,91 +546,166 @@ function QuestionCard({
     : null;
   const StatusIcon = statusConfig?.icon || Clock;
 
+  const difficultyPercent = ((question.overallDifficulty ?? question.difficulty / 3) * 100);
+  const difficultyColor = difficultyPercent >= 70 ? "text-red-600 bg-red-100" :
+                          difficultyPercent >= 40 ? "text-yellow-600 bg-yellow-100" :
+                          "text-green-600 bg-green-100";
+
   return (
     <div className="card-paper rounded-xl overflow-hidden">
       {/* Header - always visible */}
-      <button
-        onClick={onToggle}
-        className="w-full p-5 flex items-start gap-4 text-left hover:bg-[var(--paper-lines)]/30 transition-colors"
-      >
-        {/* Category indicator */}
-        <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-            question.category === "reading_writing"
-              ? "bg-purple-100 text-purple-600"
-              : "bg-blue-100 text-blue-600"
-          }`}
-        >
-          {question.category === "reading_writing" ? (
-            <BookOpen className="w-5 h-5" />
-          ) : (
-            <Calculator className="w-5 h-5" />
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="font-body text-[var(--ink-black)] line-clamp-2">
-            <MathText text={question.prompt} />
+      <div className="p-5">
+        {/* Top row: stats + actions */}
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
+          {/* Category indicator */}
+          <div
+            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              question.category === "reading_writing"
+                ? "bg-purple-100 text-purple-600"
+                : "bg-blue-100 text-blue-600"
+            }`}
+          >
+            {question.category === "reading_writing" ? (
+              <BookOpen className="w-4 h-4" />
+            ) : (
+              <Calculator className="w-4 h-4" />
+            )}
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {/* Domain badge */}
-            <span className="px-2 py-0.5 bg-[var(--paper-lines)] rounded text-xs font-body text-[var(--ink-faded)] capitalize">
-              {question.domain.replace(/_/g, " ")}
+
+          {/* Difficulty badge - prominent */}
+          <div className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 ${difficultyColor}`}>
+            <Target className="w-4 h-4" />
+            <span className="font-display font-bold text-sm">
+              {difficultyPercent.toFixed(0)}% Diff
             </span>
-            {/* Skill badge */}
-            <span className="px-2 py-0.5 bg-[var(--paper-lines)] rounded text-xs font-body text-[var(--ink-faded)] capitalize">
-              {question.skill.replace(/_/g, " ")}
-            </span>
-            {/* Difficulty */}
-            <span className="px-2 py-0.5 bg-[var(--paper-lines)] rounded text-xs font-body text-[var(--ink-faded)]">
-              Diff: {((question.overallDifficulty ?? question.difficulty / 3) * 100).toFixed(0)}%
-            </span>
-            {/* Has image indicator */}
-            {question.figureUrl && (
-              <span className="px-2 py-0.5 bg-orange-100 text-orange-600 rounded text-xs font-body flex items-center gap-1">
-                <ImageIcon className="w-3 h-3" />
-                Image
+          </div>
+
+          {/* Attempts badge */}
+          {question.stats && (
+            <div className="px-3 py-1.5 bg-blue-100 text-blue-600 rounded-lg flex items-center gap-1.5">
+              <Users className="w-4 h-4" />
+              <span className="font-display font-bold text-sm">
+                {question.stats.totalAttempts} attempts
               </span>
-            )}
-            {/* Review status */}
-            {statusConfig && (
-              <span
-                className={`px-2 py-0.5 rounded text-xs font-body flex items-center gap-1 ${statusConfig.bg} ${statusConfig.color}`}
-              >
-                <StatusIcon className="w-3 h-3" />
-                {question.reviewStatus?.replace(/_/g, " ")}
-              </span>
-            )}
-            {/* Error rate if high */}
-            {question.stats && question.stats.errorRate > 0.5 && (
-              <span className="px-2 py-0.5 bg-red-100 text-red-600 rounded text-xs font-body">
+            </div>
+          )}
+
+          {/* Error rate badge - only if has attempts */}
+          {question.stats && question.stats.totalAttempts > 0 && (
+            <div className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 ${
+              question.stats.errorRate > 0.5 ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"
+            }`}>
+              <BarChart3 className="w-4 h-4" />
+              <span className="font-display font-bold text-sm">
                 {(question.stats.errorRate * 100).toFixed(0)}% error
               </span>
+            </div>
+          )}
+
+          {/* Source badge */}
+          {question.source?.type && (
+            <div className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-body">
+              {question.source.type.replace(/_/g, " ")}
+            </div>
+          )}
+
+          {/* Has image indicator */}
+          {question.figureUrl && (
+            <div className="px-2 py-1 bg-orange-100 text-orange-600 rounded-lg text-xs font-body flex items-center gap-1">
+              <ImageIcon className="w-3 h-3" />
+              Image
+            </div>
+          )}
+
+          {/* Review status */}
+          {statusConfig && (
+            <div
+              className={`px-2 py-1 rounded-lg text-xs font-body flex items-center gap-1 ${statusConfig.bg} ${statusConfig.color}`}
+            >
+              <StatusIcon className="w-3 h-3" />
+              {question.reviewStatus?.replace(/_/g, " ")}
+            </div>
+          )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            {question.reviewStatus !== "verified" && (
+              <button
+                onClick={() => onUpdateStatus(question._id, "verified")}
+                className="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg font-body text-sm flex items-center gap-1.5 transition-colors"
+                title="Approve this question"
+              >
+                <ThumbsUp className="w-4 h-4" />
+                Approve
+              </button>
+            )}
+            {question.reviewStatus !== "rejected" && (
+              <button
+                onClick={() => onUpdateStatus(question._id, "rejected")}
+                className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-body text-sm flex items-center gap-1.5 transition-colors"
+                title="Reject this question"
+              >
+                <ThumbsDown className="w-4 h-4" />
+                Reject
+              </button>
             )}
           </div>
         </div>
 
-        {/* Figure thumbnail */}
-        {question.figureUrl && (
-          <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-slate-100">
-            <img
-              src={question.figureUrl}
-              alt="Question figure"
-              className="w-full h-full object-contain"
-            />
+        {/* Question preview row - clickable */}
+        <button
+          onClick={onToggle}
+          className="w-full flex items-start gap-4 text-left hover:bg-[var(--paper-lines)]/30 transition-colors rounded-lg p-2 -mx-2"
+        >
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="font-body text-[var(--ink-black)] line-clamp-2">
+              <MathText text={question.prompt} />
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {/* Domain badge */}
+              <span className="px-2 py-0.5 bg-[var(--paper-lines)] rounded text-xs font-body text-[var(--ink-faded)] capitalize">
+                {question.domain.replace(/_/g, " ")}
+              </span>
+              {/* Skill badge */}
+              <span className="px-2 py-0.5 bg-[var(--paper-lines)] rounded text-xs font-body text-[var(--ink-faded)] capitalize">
+                {question.skill.replace(/_/g, " ")}
+              </span>
+              {/* Type badge */}
+              <span className="px-2 py-0.5 bg-[var(--paper-lines)] rounded text-xs font-body text-[var(--ink-faded)]">
+                {question.type.replace(/_/g, " ")}
+              </span>
+              {/* Correct answer */}
+              <span className="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs font-body font-medium">
+                Answer: {question.correctAnswer}
+              </span>
+            </div>
           </div>
-        )}
 
-        {/* Expand/collapse */}
-        <div className="flex-shrink-0 text-[var(--ink-faded)]">
-          {isExpanded ? (
-            <ChevronUp className="w-5 h-5" />
-          ) : (
-            <ChevronDown className="w-5 h-5" />
+          {/* Figure thumbnail */}
+          {question.figureUrl && (
+            <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-slate-100">
+              <img
+                src={question.figureUrl}
+                alt="Question figure"
+                className="w-full h-full object-contain"
+              />
+            </div>
           )}
-        </div>
-      </button>
+
+          {/* Expand/collapse */}
+          <div className="flex-shrink-0 text-[var(--ink-faded)]">
+            {isExpanded ? (
+              <ChevronUp className="w-5 h-5" />
+            ) : (
+              <ChevronDown className="w-5 h-5" />
+            )}
+          </div>
+        </button>
+      </div>
 
       {/* Expanded content */}
       {isExpanded && (

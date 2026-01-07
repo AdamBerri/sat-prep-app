@@ -1,4 +1,4 @@
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
@@ -386,5 +386,45 @@ export const getQuestionDetailForAdmin = query({
       figureUrl,
       figureMetadata,
     };
+  },
+});
+
+// ─────────────────────────────────────────────────────────
+// ADMIN MUTATIONS
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Update a question's review status (for admin approve/reject actions).
+ */
+export const setQuestionReviewStatus = mutation({
+  args: {
+    questionId: v.id("questions"),
+    reviewStatus: v.union(
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("needs_revision"),
+      v.literal("rejected"),
+      v.literal("flagged_high_error")
+    ),
+    reviewNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const question = await ctx.db.get(args.questionId);
+    if (!question) {
+      throw new Error("Question not found");
+    }
+
+    await ctx.db.patch(args.questionId, {
+      reviewStatus: args.reviewStatus,
+      lastReviewedAt: Date.now(),
+      reviewMetadata: {
+        reviewVersion: "admin_manual",
+        answerValidated: args.reviewStatus === "verified",
+        confidenceScore: 1.0,
+        reviewNotes: args.reviewNotes,
+      },
+    });
+
+    return { success: true };
   },
 });
