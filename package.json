@@ -42,13 +42,18 @@
     "export:questions": "node scripts/export-questions.mjs",
     "export:stats": "npx convex run questionExport:getExportStats",
     "import:questions": "node scripts/import-questions.mjs",
-    "import:prod-stats": "npx convex run questionImport:getImportStats"
+    "import:prod-stats": "npx convex run questionImport:getImportStats",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "validate:import": "node scripts/validate-import-data.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@clerk/nextjs": "^6.36.5",
     "@google/genai": "^1.34.0",
+    "@tailwindcss/oxide-darwin-arm64": "^4.1.18",
     "@tailwindcss/postcss": "^4.1.18",
+    "lightningcss-darwin-arm64": "^1.30.2",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
@@ -59,6 +64,7 @@
     "gray-matter": "^4.0.3",
     "jspdf": "^3.0.4",
     "katex": "^0.16.27",
+    "lightningcss": "^1.30.2",
     "lucide-react": "^0.562.0",
     "next": "^16.1.0",
     "next-mdx-remote": "^5.0.0",
@@ -83,12 +89,12 @@
     "globals": "^17.0.0",
     "serwist": "^9.0.12",
     "sharp": "^0.33.5",
-    "typescript-eslint": "^8.51.0"
+    "typescript-eslint": "^8.51.0",
+    "vitest": "^2.1.9"
   },
   "optionalDependencies": {
-    "@tailwindcss/oxide-darwin-arm64": "^4.1.18",
+    "@rollup/rollup-darwin-arm64": "^4.55.1",
     "@tailwindcss/oxide-linux-x64-gnu": "^4.1.18",
-    "lightningcss-darwin-arm64": "^1.30.2",
     "lightningcss-linux-x64-gnu": "^1.30.2"
   }
 }

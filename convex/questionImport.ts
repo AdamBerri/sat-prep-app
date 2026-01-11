@@ -138,7 +138,15 @@ export const importQuestion = mutation({
     generationMetadata: v.optional(v.any()),
     grammarData: v.optional(v.any()),
     lineReference: v.optional(v.any()),
-    reviewStatus: v.optional(v.string()),
+    reviewStatus: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("verified"),
+        v.literal("needs_revision"),
+        v.literal("rejected"),
+        v.literal("flagged_high_error")
+      )
+    ),
     reviewMetadata: v.optional(v.any()),
     improvementHistory: v.optional(v.any()),
 
@@ -214,7 +222,7 @@ export const importQuestion = mutation({
       generationMetadata: args.generationMetadata,
       grammarData: args.grammarData,
       tags,
-      reviewStatus: "verified", // Always import as verified
+      reviewStatus: args.reviewStatus || "pending",
       reviewMetadata: args.reviewMetadata,
       lastReviewedAt: Date.now(),
       improvementHistory: args.improvementHistory,
@@ -243,6 +251,28 @@ export const importQuestion = mutation({
     }
 
     return { questionId, originalQuestionId: args.originalQuestionId };
+  },
+});
+
+// Update a question's passageId (for repairing broken links)
+export const updateQuestionPassageId = mutation({
+  args: {
+    questionId: v.id("questions"),
+    passageId: v.id("passages"),
+  },
+  handler: async (ctx, args) => {
+    // Verify the passage exists
+    const passage = await ctx.db.get(args.passageId);
+    if (!passage) {
+      throw new Error(`Passage ${args.passageId} not found`);
+    }
+
+    // Update the question
+    await ctx.db.patch(args.questionId, {
+      passageId: args.passageId,
+    });
+
+    return { success: true };
   },
 });
 

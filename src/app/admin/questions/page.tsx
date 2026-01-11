@@ -82,6 +82,7 @@ interface QuestionWithDetails {
       relatedSkill?: string;
     }>;
   } | null;
+  passageId?: string;
   passage: {
     content: string;
     title?: string;
@@ -749,6 +750,54 @@ function QuestionCard({
             </div>
           )}
 
+          {/* Embedded passage for data interpretation questions (passage in prompt) */}
+          {!question.passage && !question.grammarData && question.figureUrl && question.prompt.includes("\n\n") && (
+            <div>
+              <h4 className="font-display font-semibold text-[var(--ink-black)] mb-2">
+                Context Passage
+              </h4>
+              <div className="bg-white rounded-xl p-4 border border-[var(--paper-lines)] max-h-48 overflow-y-auto">
+                <p className="font-body text-sm text-[var(--ink-black)] whitespace-pre-wrap">
+                  {question.prompt.split("\n\n")[0]}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Warning: Missing passage data */}
+          {question.passageId && !question.passage && (
+            <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h5 className="font-display font-semibold text-red-700 mb-1">
+                    Missing Passage Data
+                  </h5>
+                  <p className="font-body text-sm text-red-600">
+                    This question has a passageId (<code className="bg-red-100 px-1 rounded text-xs">{question.passageId}</code>) but the passage record was not found in the database.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Warning: Empty passage content */}
+          {question.passage && !question.passage.content?.trim() && (
+            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h5 className="font-display font-semibold text-yellow-700 mb-1">
+                    Empty Passage Content
+                  </h5>
+                  <p className="font-body text-sm text-yellow-600">
+                    This question has a passage record but the content is empty or incomplete.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Passage(s) for reading questions */}
           {(question.passage || question.passage2) && (
             <div>
@@ -826,7 +875,12 @@ function QuestionCard({
               Question
             </h4>
             <p className="font-body text-[var(--ink-black)]">
-              <MathText text={question.prompt} />
+              <MathText text={
+                // If we showed embedded passage separately, only show the question stem
+                !question.passage && !question.grammarData && question.figureUrl && question.prompt.includes("\n\n")
+                  ? question.prompt.split("\n\n").slice(1).join("\n\n")
+                  : question.prompt
+              } />
             </p>
           </div>
 
@@ -1009,6 +1063,12 @@ function QuestionCard({
             <div className="flex flex-wrap gap-4 text-xs font-body text-[var(--ink-faded)]">
               <span>ID: {question._id}</span>
               <span>Type: {question.type}</span>
+              {question.passageId && (
+                <span className={question.passage ? "" : "text-red-500 font-medium"}>
+                  PassageID: {question.passageId}
+                  {!question.passage && " (NOT FOUND)"}
+                </span>
+              )}
               {question.source?.type && (
                 <span>Source: {question.source.type.replace(/_/g, " ")}</span>
               )}

@@ -132,10 +132,20 @@ export const listQuestionsForAdmin = query({
         }
 
         // Get passage2 for cross-text questions
+        // Check both metadata AND tags (questions may store passage2 in either location)
         let passage2 = null;
-        const passage2IdStr = (
+        let passage2IdStr = (
           question.generationMetadata as { promptParameters?: { passage2Id?: string } } | undefined
         )?.promptParameters?.passage2Id;
+
+        // Fallback to tags if not in metadata
+        if (!passage2IdStr && question.skill === "cross_text_connections" && question.tags) {
+          const passage2Tag = question.tags.find((tag: string) => tag.startsWith("passage2:"));
+          if (passage2Tag) {
+            passage2IdStr = passage2Tag.replace("passage2:", "");
+          }
+        }
+
         if (passage2IdStr) {
           try {
             passage2 = await ctx.db.get(passage2IdStr as Id<"passages">);
@@ -327,10 +337,20 @@ export const getQuestionDetailForAdmin = query({
     }
 
     // Get passage2 for cross-text questions
+    // Check both metadata AND tags (questions may store passage2 in either location)
     let passage2 = null;
-    const passage2IdStr = (
+    let passage2IdStr = (
       question.generationMetadata as { promptParameters?: { passage2Id?: string } } | undefined
     )?.promptParameters?.passage2Id;
+
+    // Fallback to tags if not in metadata
+    if (!passage2IdStr && question.skill === "cross_text_connections" && question.tags) {
+      const passage2Tag = question.tags.find((tag: string) => tag.startsWith("passage2:"));
+      if (passage2Tag) {
+        passage2IdStr = passage2Tag.replace("passage2:", "");
+      }
+    }
+
     if (passage2IdStr) {
       try {
         passage2 = await ctx.db.get(passage2IdStr as Id<"passages">);

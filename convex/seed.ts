@@ -332,6 +332,107 @@ export const deleteRecentQuestions = mutation({
   },
 });
 
+/**
+ * Clear all questions and related data (answerOptions, explanations, passages).
+ * Use dryRun: true to preview what would be deleted.
+ */
+export const clearAllQuestions = mutation({
+  args: {
+    dryRun: v.optional(v.boolean()),
+    clearPassages: v.optional(v.boolean()), // Also clear passages (default: true)
+  },
+  handler: async (ctx, args) => {
+    const clearPassages = args.clearPassages !== false;
+
+    // Count questions
+    const allQuestions = await ctx.db.query("questions").collect();
+    const allOptions = await ctx.db.query("answerOptions").collect();
+    const allExplanations = await ctx.db.query("explanations").collect();
+    const allPassages = clearPassages ? await ctx.db.query("passages").collect() : [];
+    const allPassageFigures = clearPassages ? await ctx.db.query("passageFigures").collect() : [];
+
+    if (args.dryRun) {
+      return {
+        dryRun: true,
+        wouldDelete: {
+          questions: allQuestions.length,
+          answerOptions: allOptions.length,
+          explanations: allExplanations.length,
+          passages: allPassages.length,
+          passageFigures: allPassageFigures.length,
+        },
+        message: `Would delete ${allQuestions.length} questions (and related data)`,
+      };
+    }
+
+    // Delete in order to avoid foreign key issues
+    let deletedQuestions = 0;
+    let deletedOptions = 0;
+    let deletedExplanations = 0;
+    let deletedPassages = 0;
+    let deletedPassageFigures = 0;
+    let deletedImages = 0;
+
+    // Delete explanations first
+    for (const exp of allExplanations) {
+      await ctx.db.delete(exp._id);
+      deletedExplanations++;
+    }
+
+    // Delete answer options
+    for (const opt of allOptions) {
+      await ctx.db.delete(opt._id);
+      deletedOptions++;
+    }
+
+    // Delete questions (and their images)
+    for (const question of allQuestions) {
+      // Delete figure image if exists
+      if (question.figure?.imageId) {
+        const image = await ctx.db.get(question.figure.imageId);
+        if (image) {
+          try {
+            await ctx.storage.delete(image.storageId);
+          } catch (e) {
+            // Storage item may not exist
+          }
+          await ctx.db.delete(question.figure.imageId);
+          deletedImages++;
+        }
+      }
+      await ctx.db.delete(question._id);
+      deletedQuestions++;
+    }
+
+    // Delete passage figures
+    if (clearPassages) {
+      for (const pf of allPassageFigures) {
+        await ctx.db.delete(pf._id);
+        deletedPassageFigures++;
+      }
+
+      // Delete passages
+      for (const passage of allPassages) {
+        await ctx.db.delete(passage._id);
+        deletedPassages++;
+      }
+    }
+
+    return {
+      dryRun: false,
+      deleted: {
+        questions: deletedQuestions,
+        answerOptions: deletedOptions,
+        explanations: deletedExplanations,
+        passages: deletedPassages,
+        passageFigures: deletedPassageFigures,
+        images: deletedImages,
+      },
+      message: `Deleted ${deletedQuestions} questions and related data`,
+    };
+  },
+});
+
 // Clear all data (for development)
 export const clearDatabase = mutation({
   args: {},

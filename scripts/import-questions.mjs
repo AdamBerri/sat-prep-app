@@ -14,7 +14,7 @@
  */
 
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../convex/_generated/api.mjs";
+import { api } from "../convex/_generated/api.js";
 import * as fs from "fs";
 
 // ─────────────────────────────────────────────────────────
@@ -209,6 +209,7 @@ async function main() {
   let passagesCreated = 0;
   let passagesSkipped = 0;
 
+  let passageErrors = [];
   for (const [oldId, passage] of passageEntries) {
     try {
       const result = await convex.mutation(api.questionImport.importPassage, {
@@ -231,12 +232,34 @@ async function main() {
         passagesSkipped++;
       }
     } catch (error) {
-      console.error(`  Error importing passage ${oldId}: ${error.message}`);
+      console.error(`  ERROR importing passage ${oldId}: ${error.message}`);
+      passageErrors.push({ oldId, error: error.message });
     }
   }
   console.log(
-    `  Created: ${passagesCreated}, Skipped (duplicate): ${passagesSkipped}`
+    `  Created: ${passagesCreated}, Skipped (duplicate): ${passagesSkipped}, Errors: ${passageErrors.length}`
   );
+
+  // FAIL FAST: If any passages failed, stop and report
+  if (passageErrors.length > 0) {
+    console.error("");
+    console.error("═══════════════════════════════════════════════════════════════");
+    console.error("  IMPORT ABORTED: Passage import errors detected!");
+    console.error("═══════════════════════════════════════════════════════════════");
+    console.error("");
+    console.error("The following passages failed to import:");
+    for (const { oldId, error } of passageErrors.slice(0, 10)) {
+      console.error(`  - ${oldId.substring(0, 40)}...`);
+      console.error(`    Error: ${error}`);
+    }
+    if (passageErrors.length > 10) {
+      console.error(`  ... and ${passageErrors.length - 10} more`);
+    }
+    console.error("");
+    console.error("Questions were NOT imported to prevent orphaned references.");
+    console.error("Fix the passage issues and re-run the import.");
+    process.exit(1);
+  }
 
   // Step 3: Import passage figures
   console.log("");
@@ -293,11 +316,27 @@ async function main() {
         }
       }
 
-      // Remap IDs
+      // Remap IDs - VALIDATE that passages exist if expected
       const newPassageId = passageId ? passageIdMap.get(passageId) : undefined;
       const newPassage2Id = passage2Id
         ? passageIdMap.get(passage2Id)
         : undefined;
+
+      // CRITICAL: Fail if question expects a passage but we don't have it
+      if (passageId && !newPassageId) {
+        errors.push({
+          prompt: question.prompt.substring(0, 50),
+          error: `Missing passage: ${passageId} was not imported`,
+        });
+        continue; // Skip this question
+      }
+      if (passage2Id && !newPassage2Id) {
+        errors.push({
+          prompt: question.prompt.substring(0, 50),
+          error: `Missing passage2: ${passage2Id} was not imported`,
+        });
+        continue; // Skip this question
+      }
 
       // Remap figure imageId if present
       let figure = undefined;

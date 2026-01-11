@@ -14,7 +14,7 @@
  */
 
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../convex/_generated/api.mjs";
+import { api } from "../convex/_generated/api.js";
 import * as fs from "fs";
 
 // ─────────────────────────────────────────────────────────
